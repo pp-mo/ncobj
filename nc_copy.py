@@ -12,10 +12,23 @@ TODO:
   add support for Groups.  N.B. don't have good test examples for this.
   add support for user-types.  N.B. don't have good test examples for this.
 
+REPLACE:
+  Existing code is a stop-gap for a better approach, which is decoupled from
+  a _file_ and does *not* reflect all modifications back to one.
+  Ideally want a "netCDF object" which can freely read-from/write to files.
+    * should provide the things you *can't* do with netCDF4 itself...
+    * so you can filter, augment or adjust and then write out elsewhere
+      - for example, remove certain attributes of certain variables
+    * each component is represented by an independent object (type)
+        * these can be freely deleted, added, adjusted
+        * renaming should also be possible
+    * ideally, the variables will preserve deferred data access
+
 ISSUES:
   some known problems with attributes in netCDF4 implementation
     -  e.g. distinguish 1.0 and [1.0] ?
     -  e.g. distinguish ["this", "that"] and "this that" ?
+
 """
 
 import netCDF4
