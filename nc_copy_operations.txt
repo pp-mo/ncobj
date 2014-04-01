@@ -1,0 +1,375 @@
+
+ds.groups
+ds.variables
+    .keys
+    [varname]
+        .ncattrs
+            [MAGIC_FV_NAME]   # '_FillValue' must be avoided
+        .getncattr(attrname)
+        .dimensions
+        .dtype
+        .setncattr(attrname, attr_val)
+ds.dimensions
+    .keys
+    [dimname]
+        .isunlimited
+ds.ncattrs
+ds.createDimension(dimname, size=None)
+ds,createVariable(varname, dtype, dimensions, fill_value=None)
+    N.B. lots of extra create kwargs : needs some support ...
+
+
+NOTE:
+    attrs are not objects in this description --neither are dims, actually ...
+
+
+Groups -- missing:
+    ds.groups
+        .keys
+        [grpname]
+            createGroup(grpname)
+    ds.createGroup()
+
+Other missing bits:
+    ds/grp.renameDimension(oldname, newname)
+    ds/grp.renameAttribute(oldname, newname)
+    ds/grp.renameVariable(oldname, newname)
+    ds/grp.renameGroup(oldname, newname)
+
+
+Extra instance methods:
+    Dimension
+        .group
+
+
+In our case, we would not need any renames
+We might use helper functions that can include/exclude certain things, e.g.
+    remove_any('grid_*', ds1.groups['main'])
+    retain_only(['this_var', 'that_var'], ds1.groups['any'].vars, recurse_groups=True)
+        # PROBLEM here : how do we specify that we are dealing with vars or attrs ??
+
+something like 
+    "recurse through given groups, keeping any_of / any_but these attribute/var names"
+    alternatively...
+        for group in walk_groups(x):
+            group.vars = 
+    
+    "recurse through groups, removing all dimensions but those named, and optionally that refer to the included variables.
+
+For variables, we could conceivably have a path-like-names scheme, 
+    e.g. 'var1', ('groupA', 'var1'), ('groupB', 'subgrp_X', 'var1')
+
+Access this via an additional "grouppath_name" property.
+We could do this in place ??
+
+If you implement this as a "flat" model, you can then easily ask about "all vars", "all dims" etc.
+It should be possible to delete things, e.g.
+    for var in ds.vars_recursed():
+        if var.name is 'obsolete':
+            var.group.variables.remove[var]
+            # OR: ds.remove(var)
+    
+    for var in ds.vars_recursed():
+        if unwanted_name in var.attributes:
+            var.attributes.remove(unwanted_name)
+            
+    # OR: 
+    for var in ds.vars_down_groups():
+        ds.remove(var.attributes.get(unwanted_name))
+
+What about recursive selection of only the "required things ?"
+allvars = ds.variables_recursed()
+
+# group-path names of all attributes...
+    all_attrs = sum([list(var.attributes.iteritems())
+                     for var in ds.vars_downallgroups()], [])
+
+    all_vars = sum([list(groups.variables.iteritems())
+                    for group in ds.groups_downallgroups()], [])
+
+dsw_out = ncwrap()
+
+dsw_out = dsw_in.copy()
+dsw_out.variables += [var for var in dsw_in.variables if var.name != 'unwanted']
+prune_dims(dsw_out, recurse=True)
+dsw_out.write('new_name.nc')
+
+
+
+
+all_varattrs = sum(list(var.attributes.)
+for dim in ds.dimensions_recursed():
+    if 
+
+
+=========================
+Containers usage. What would we like to support ? ...
+Full list of public props/methods of dict/list/set
+    >>> pd({})
+    clear
+    copy
+    fromkeys
+    get
+    has_key
+    items
+    iteritems
+    iterkeys
+    itervalues
+    keys
+    pop
+    popitem
+    setdefault
+    update
+    values
+    viewitems
+    viewkeys
+    viewvalues
+    >>> pd([])
+    append
+    count
+    extend
+    index
+    insert
+    pop
+    remove
+    reverse
+    sort
+    >>> pd(set())
+    add
+    clear
+    copy
+    difference
+    difference_update
+    discard
+    intersection
+    intersection_update
+    isdisjoint
+    issubset
+    issuperset
+    pop
+    remove
+    symmetric_difference
+    symmetric_difference_update
+    union
+    update
+    >>> 
+
+Ones we might consider for our NcobjContainer type
+(ignoring, for now, the usage of number indexing as maybe used for dims)
+    clear
+    copy
+    get
+    items / values / keys / iterXxx
+    pop
+    append
+    count
+    extend
+    pop
+    remove
+    add
+    discard
+    pop
+    remove
+
+Ones I like
+    __setitem__
+    __getitem__
+    add
+    extend
+    remove
+    clear
+    count
+    copy
+    iter
+    names  (==keys, basically)
+
+For contained objects, want to implement
+    item.group_path_in(group)
+    item.rename  (affects container)
+    item.remove  (affects container)
+    item.as_detached()
+
+Group methods
+    write
+    (class)from_file
+    walk_all(class)
+    all_variables()
+
+
+class NcObj(object):
+    """
+    An object representing a named information element in NetCDF.
+    """
+    def __init__(self, name, parent=None):
+        self.parent = parent
+        self.name = name
+
+    def group_path_in(self, group):
+        """
+        Construct a relative group path to the parent of this object.
+
+        Args:
+        * group (:class:``):
+            an NcGroup object to search for this item within.
+
+        """
+        # Find all super-groups of the requested containing group.
+        supergroups = [group]
+        parent = group.parent
+        while parent != None:
+            supergroups.append(parent)
+            parent = parent.parent
+
+        # Scan our parents looking for a connection into the passed group.
+        group_path = []
+        parent = self.parent
+        while parent != None and parent not in supergroups:
+            group_path = [parent.name] + group_path
+            parent = parent.parent
+        if parent is None:
+            # No connection found with the requested group.
+            return None
+        else:
+            # Found a connection.  Add '..' for groups "above" the requested.
+            supergroups_iter = supergroups.iter()
+            while supergroups_iter.next() != parent:
+                group_path = ['..'] + group_path
+            return group_path
+
+    def rename(self, name)
+        """
+        Rename an Ncobj element.
+
+        Args:
+        * name (string):
+            the new name for this element.
+
+        Note: this affects the parent (NcContainer), if it is assigned to one,
+        and will raise an error if the name already exists in the parent.
+        """
+        if self.parent:
+            self.parent.rename_element(self, name)
+        else:
+            # detached object.
+            self.name = name
+
+    @abstract
+    def as_detached(self):
+        """
+        Return a 'detached' copy of this element.
+        """
+        pass
+
+    def remove(self):
+        """Remove from the parent container (if any)."""
+        if self.parent:
+            self.parent.remove(self)
+
+    def _added_to(self, container):
+        self.parent = container
+
+
+class NcDim(NcObj):
+    """A NetCDF dimension object."""
+    def __init__(self, name, parent=None, length=None):
+        NcObj.__init__(self, name, parent)
+        self.length = length
+
+    def isunlimited(self):
+        return self.length is None
+
+    def detached_copy(self):
+        return NcDim(name=self.name, parent=None, length=self.length)
+
+
+class NcVar(NcObj):
+    """A NetCDF dimension object."""
+    def __init__(self, name, parent=None,
+                 dimensions=None, data=None, attributes=None):
+        NcObj.__init__(self, name, parent)
+        if dimensions is None:
+            dimensions = []
+        elif isinstance(dimensions, NcDimension):
+            dimensions = [dimensions]
+        self.dimensions = list(dimensions)
+        self.attributes = NcobjContainer(NcAttribute,
+                                         contents=attributes)
+        self._data = data
+
+    def detached_copy(self):
+        return NcVar(name=self.name, parent=None,
+                     dimensions=[dim.detached_copy()
+                                 for dim in self.dimensions],
+                     attributes=self.attributes.detached_copy())
+
+
+class NcobjContainer(object, Ncobj):
+    """
+    A generic (abstract) container object for NetCDF file data objects.
+    """
+    def __init__(self, contents=None):
+        """
+        Args:
+        * contents (iterable):
+        A group of elements specifying the initial contents.
+
+        """
+        self._content = {}
+        for element in contents:
+            self.__setitem__(element.name, element.as_detached())
+            self._content[element.name]._added_to(self)
+
+    @abstract
+    def _check_element_type(self, element):
+        if not isinstance(element, self._of_type):
+            msg = ('Element named "{}" is not a {}, so cannot be included in '
+                    'a {} container.'.format(element.name,
+                                             self._of_type.__name__,
+                                             self.__class__.__name__)
+            raise ValueError(msg)
+
+    def detached_copy(self):
+        elements = [element.as_detached()
+                    for element in self._content.itervalues()]
+        return self.__class__(contents=elements)
+
+    def names(self):
+        return self._content.keys()
+
+    def __getitem__(self, name):
+        return self._contents[name]
+
+    def __setitem__(self, name, element):
+        """
+        Place an element in the container under a given name.
+
+        Note: element.name and element.parent are rewritten.
+        """
+        if name in self.names():
+            raise ValueError
+        self._check_element_type(element)
+        self._content[name] = element
+        element.name = name
+
+    def add_element(self, element):
+        """
+        Place an element in the container under its existing name.
+        """
+        self[element.name] = element
+
+    def remove_element(self, element):
+        element = self._content.pop(element.name)
+        element.parent = None
+        return element
+
+    def pop(self, name):
+        return self.remove_element(self[name])
+
+    def __del__(self, name):
+        self.remove_element(self[name])
+
+    def rename_element(self, element, new_name):
+        element = self.remove_element(element)
+        element.name = new_name
+        self[new_name] = element
+
