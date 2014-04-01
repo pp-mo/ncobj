@@ -9,6 +9,44 @@ import netCDF4
 import ncobj
 
 
+#
+# Odd salvage
+#
+if 0:
+    def group_path_in(self, in_group):
+        """
+        Construct a relative group-path to this object.
+
+        Args:
+        * in_group (:class:``):
+        an Group object to search for this item within.
+
+        """
+        # Find all super-groups of the requested containing in_group.
+        supergroups = [in_group]
+        group = in_group.group
+        while group != None:
+            supergroups.append(group)
+            group = group.group
+
+        # Scan our parents looking for a connection into the passed in_group.
+        group_path = []
+        group = self.group
+        while group != None and group not in supergroups:
+            group_path = [group.name] + group_path
+            group = group.group
+        if group is None:
+            # No connection found with the requested in_group.
+            return None
+        else:
+            # Found a connection.  Add '..' for groups "above" the requested.
+            supergroups_iter = supergroups.iter()
+            while supergroups_iter.next() != group:
+                group_path = ['..'] + group_path
+            return group_path
+
+
+# Main definition.
 class NcFile(ncobj.Group):
     def __init__(self, input_file=None, input_format=None):
         ncobj.Group.__init__(self)

@@ -15,12 +15,19 @@ class Test__api(tests.TestCase):
         dim_x = ncobj.Dimension('x', length=3)
         self.nco.dimensions.add(dim_x)
         self.nco.dimensions.add(dim_y)
-        var1 = ncobj.Variable('var_x',
+        var1 = ncobj.Variable('var_A',
                  dimensions=(dim_y, dim_x),
                  dtype=float,
                  data=[[1, 2, 3], [4, 5, 6]])
         var1.attributes.add(ncobj.Attribute('var_att_a', value='this'))
         self.nco.variables.add(var1)
+        var2 = ncobj.Variable('var_B',
+                 dimensions=(),
+                 dtype=float,
+                 data=[])
+        self.nco.variables.add(var2)
+        print
+        print self.nco
 
 #    def test_all(self):
 #        nco = NcFile(self.input_dataset)
@@ -28,6 +35,8 @@ class Test__api(tests.TestCase):
 
     def test_exclude_vars(self):
         for var in self.nco.all_variables():
+            print
+            print var, var.name
             if var.name in ('exc_1', 'exc_2'):
                 var.remove()
 #        self.nco.write(self.out_file)

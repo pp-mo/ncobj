@@ -9,13 +9,18 @@ writing this form to and from NetCDF4.Dataset objects.
 
 The containment of elements within other elements is two-way navigable, so a
 reference to any part of a data structure potentially references the entire
-object.
+object.  This enables all elements to provide a "remove" method.
+(For this purpose, Attributes are also full independent objects.)
+
 Elements which may be the target of internal naming "references", such as
-user-types and dimensions, are modelled as python objects which can be either
-duplicate references or independent objects.  Such inconsistent references are
-automatically reconciled when writing the dataset to an actual file.
+user-types and dimensions, can be either duplicate object references or
+independent objects.  Any inconsistent references are automatically reconciled
+when writing the dataset to an actual file.
 This enables freely moving sections of data between files, with any
-referencable elements being re-created as required.
+referenced elements being re-created as required.
+However, to preserve the hiearchical structure of referencing within groups,
+any referenced elements must must added and/or copied at the group level, as
+automatically generated reference elements are created at the top level.
 
 """
 
@@ -23,54 +28,22 @@ class NcObj(object):
     """
     An object representing a named information element in NetCDF.
     """
-    def __init__(self, name, parent=None, group=None):
+    def __init__(self, name, container=None, group=None):
         """
         Args:
         * name (string):
         The name of this element (unique within any containing element).
-        * parent (:class:`NcobjContainer`):
+        * container (:class:`NcobjContainer`):
         A container that this element is held in.
         * group (:class:`Group`):
         The group that this element is defined in.
 
         """
         self.name = name
-        self.parent = parent
-        if group is None and parent is not None:
-            group = parent.group
+        self.container = container
+        if group is None and container is not None:
+            group = container.group
         self.group = group
-
-    def group_path_in(self, in_group):
-        """
-        Construct a relative group-path to this object.
-
-        Args:
-        * in_group (:class:``):
-        an Group object to search for this item within.
-
-        """
-        # Find all super-groups of the requested containing in_group.
-        supergroups = [in_group]
-        group = in_group.group
-        while group != None:
-            supergroups.append(group)
-            group = group.group
-
-        # Scan our parents looking for a connection into the passed in_group.
-        group_path = []
-        group = self.group
-        while group != None and group not in supergroups:
-            group_path = [group.name] + group_path
-            group = group.group
-        if group is None:
-            # No connection found with the requested in_group.
-            return None
-        else:
-            # Found a connection.  Add '..' for groups "above" the requested.
-            supergroups_iter = supergroups.iter()
-            while supergroups_iter.next() != group:
-                group_path = ['..'] + group_path
-            return group_path
 
     def rename(self, name):
         """
@@ -83,8 +56,8 @@ class NcObj(object):
         Note: this affects the group (NcContainer), if it is assigned to one,
         and will raise an error if the name already exists in the group.
         """
-        if self.parent:
-            self.parent.rename_element(self, name)
+        if self.container:
+            self.container.rename_element(self, name)
         else:
             # detached object.
             self.name = name
@@ -92,25 +65,18 @@ class NcObj(object):
 #    @abstract
     def detached_copy(self):
         """
-        Return a 'detached' copy of this element.
+        Return an independent 'unlinked' copy of this element.
         """
         pass
 
-    def _match_references(self, source_element):
-        # NOTE: default is do nothing.
-        # Objects that may contain references (e.g. variables, which may
-        # contain dimensions and user-types) must hook this to reproduce the
-        # references within the source element in our own location
-        pass
-
     def remove(self):
-        """Remove from the group container (if any)."""
-        if self.parent:
-            self.parent.pop(self, None)
+        """Remove from the parent container (if any)."""
+        if self.container:
+            self.container.pop(self, None)
 
     def _added_to(self, container):
         """Record the parent container."""
-        self.parent = container
+        self.container = container
 
 
 class Dimension(NcObj):
@@ -160,10 +126,6 @@ class Variable(NcObj):
                                       for dim in self.dimensions],
                           attributes=self.attributes.detached_copy())
 
-    def _match_references(self, source_element):
-        pass
-        # BIG TO-DO !
-
 
 class NcobjContainer(object):
     """
@@ -178,15 +140,15 @@ class NcobjContainer(object):
         The group that the container (and its elements) will belong to.
 
         Note: the containers mostly emulate a dictionary.  A variety of
-        indexing methods are provided -- __setitem__, __getitem__, __del__,
-        pop, add and remove (the last two take the element not
+        indexing methods are provided -- __setitem__, __getitem__,
+        __delitem__, pop, add and remove (the last two take the element not
         the name).
         Use names() for the names, and iter() or list() for the contents.
         Assigning to an existing name is an error, so "self[name].name == name"
         is always true.  A blank name is also forbidden.
         len() is also supported.
 
-        TODO: probably more constraints on names ??
+        TODO: probably more constraints on names for NetCDF validity ??
 
         """
         self.group = group
@@ -239,8 +201,6 @@ class NcobjContainer(object):
         our_element = element.detached_copy()
         self._content[name] = our_element
         our_element.name = name
-        # Include any new references and patch them into the new element.
-        our_element._match_references(element)
 
     def pop(self, name, default=None):
         if name in self._content:
@@ -253,7 +213,7 @@ class NcobjContainer(object):
             raise KeyError(name)
         return result
 
-    def __del__(self, name):
+    def __delitem__(self, name):
         self.pop(name)
 
     def add(self, element):
@@ -291,19 +251,21 @@ class Group(NcObj):
         self.attributes = NcAttributesContainer(attributes, self)
         self.groups = NcGroupsContainer(sub_groups, self)
 
-    def treewalk_content(self):
-        yield self
+    def treewalk_content(self, return_types=None):
+        if return_types is None or isinstance(self, return_types):
+            yield self
         for container in (self.dimensions,
                           self.variables,
                           self.attributes):
             for element in container:
-                yield element
+                if return_types is None or isinstance(element, return_types):
+                    yield element
         for group in self.groups:
-            treewalk_content(group)
+            treewalk_content(group, return_types)
 
     def all_variables(self):
-        return list(element for element in self.treewalk_content()
-                    if isinstance(element, Variable))
+        return list(element for element in self.treewalk_content(Variable))
+
 
 class NcAttributesContainer(NcobjContainer):
     """An attributes container."""
