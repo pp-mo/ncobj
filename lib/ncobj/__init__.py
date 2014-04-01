@@ -1,3 +1,24 @@
+"""
+An abstract representation of NetCDF data for manipulation purposes.
+
+The purpose of this is to allow arbitrary manipulation of NetCDF data,
+decoupled from the NetCDF file API.
+
+A separate 'nc_dataset' submodule provides an interface for reading and
+writing this form to and from NetCDF4.Dataset objects.
+
+The containment of elements within other elements is two-way navigable, so a
+reference to any part of a data structure potentially references the entire
+object.
+Elements which may be the target of internal naming "references", such as
+user-types and dimensions, are modelled as python objects which can be either
+duplicate references or independent objects.  Such inconsistent references are
+automatically reconciled when writing the dataset to an actual file.
+This enables freely moving sections of data between files, with any
+referencable elements being re-created as required.
+
+"""
+
 class NcObj(object):
     """
     An object representing a named information element in NetCDF.
@@ -303,54 +324,3 @@ class NcVariablesContainer(NcobjContainer):
 class NcGroupsContainer(NcobjContainer):
     """A subgroups container."""
     _of_type = Group
-
-
-import netCDF4
-
-
-class NcFile(Group):
-    def __init__(self, input_file=None, input_format=None):
-        Group.__init__(self)
-        if input_file:
-            if isinstance(input_file, netCDF4.Dataset):
-                ds = input_file
-            elif input_format:
-                ds = netCDF4.Dataset(input_file, format=input_format)
-            else:
-                ds = netCDF4.Dataset(input_file)
-
-            # no groups yet, this is just ideas ...
-
-            for attname in ds.ncattrs():
-                value = ds.getncattr(attname)
-                attribute = Attribute(attname, value=value)
-                ds.attributes.add(dimension)
-
-            for (name, dim) in ds.dimensions.iteritems:
-                length = None if dim.isunlimited() else len(dim)
-                dimension = Dimension(name, length=length)
-                ds.dimensions.add(dimension)
-
-            for (name, ds_var) in ds.variables.iteritems:
-                dimensions = []
-                for dim_name in ds_var.dimensions:
-                    ds_dim = ds.dimensions[dim_name]
-                    length = None if ds_dim.isunlimited() else len(ds_dim)
-                    dimensions.append(Dimension(dim_name, length))
-                attributes = []
-                for attr_name in ds_var.ncattrs():
-                    value = ds_var.getncattr(attr_name)
-                    attributes.append(Attribute(attr_name, value))
-                variable = Variable(name, group=self,
-                                      dimensions=dimensions,
-                                      dtype=ds_var.datatype,  # TODO user-types?
-                                      data=ds_var,  # NOTE: so deferred!
-                                      attributes=attributes)
-                ds.variables.add(variable)
-
-    def write(self, writable):
-        pass
-
-    def read(self, readable):
-        pass
-
