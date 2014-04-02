@@ -40,11 +40,17 @@ class NcObj(object):
         The group that this element is defined in.
 
         """
-        self.name = name
-        self.container = container
-        if group is None and container is not None:
-            group = container.group
-        self.group = group
+        self._name = name
+        self._container = container  # Parent container (if any)
+        self._group = group  # Definition group (if any)
+
+    @property
+    def container(self):
+        return self._container
+
+    @property
+    def name(self):
+        return self._name
 
     def rename(self, name):
         """
@@ -75,9 +81,15 @@ class NcObj(object):
         if self.container:
             self.container.pop(self, None)
 
-    def _added_to(self, container):
-        """Record the parent container."""
-        self.container = container
+
+def _prop_repr(obj, property_name):
+    """Make an optional initialisation string for a property."""
+    result = ''
+    if hasattr(obj, property_name):
+        val = getattr(obj, property_name)
+        if val:
+            result = '{}={!r}'.format(property_name, val)
+    return result
 
 
 class Dimension(NcObj):
@@ -99,7 +111,7 @@ class Dimension(NcObj):
         return 'Dimension({}, length={}{})'.format(
             self.name,
             self.length,
-            ', group={}'.format(repr(self.group)) if self.group else '')
+            ', {}'.format(_prop_repr(self, 'group')))
 
 
 class Attribute(NcObj):
@@ -115,14 +127,15 @@ class Attribute(NcObj):
         return '<Attribute "{}" = {}>'.format(self.name, self.value)
 
     def __repr__(self):
-        return 'Attribute({}, value={}{})'.format(
+        return 'Attribute({}, value={}{}{})'.format(
             self.name,
             self.value,
-            ', group={}'.format(repr(self.group)) if self.group else '')
+            ', {}'.format(_prop_repr(self, 'container')),
+            ', {}'.format(_prop_repr(self, 'group')))
 
 
 class Variable(NcObj):
-    """A NetCDF dimension object."""
+    """A NetCDF variable object."""
     def __init__(self, name,
                  dimensions=None, type=None, data=None, attributes=None,
                  group=None):
@@ -144,7 +157,7 @@ class Variable(NcObj):
                         type=self.type, data=self.data,
                         dimensions=[dim.detached_copy()
                                     for dim in self.dimensions],
-                        attributes=self.attributes.detached_copy())
+                        attributes=self.attributes.detached_contents_copy())
 
     def __str__(self):
         repstr = '<Variable "{}":'.format(self.name)
@@ -161,8 +174,8 @@ class Variable(NcObj):
         if self.dimensions:
             repstr += ', dimensions={!r}'.format(self.dimensions)
         repstr += ', data={}'.format(self.data)
-        if self.attributes:
-            repstr += ', attributes={!r}'.format(self.attributes)
+        repstr += ', {}'.format(_prop_repr(self, 'attributes'))
+        repstr += ', {}'.format(_prop_repr(self, 'group'))
         return repstr + ')'
 
 
@@ -190,12 +203,16 @@ class NcobjContainer(object):
         TODO: probably more constraints on names for NetCDF validity ??
 
         """
-        self.group = group
+        self._group = group
         self._content = {}
         if contents:
             for element in contents:
                 self.__setitem__(element.name, element.detached_copy())
-                self._content[element.name]._added_to(self.group)
+                self._content[element.name]._container = self
+
+    @property
+    def group(self):
+        return self._group
 
     def _check_element_type(self, element):
         if not isinstance(element, self._of_type):
@@ -209,7 +226,7 @@ class NcobjContainer(object):
         if not isinstance(name, basestring) or len(name) == 0:
             raise ValueError('invalid element name "{}"'.format(name))
 
-    def detached_copy(self):
+    def detached_contents_copy(self):
         elements = [element.detached_copy()
                     for element in self._content.itervalues()]
         return self.__class__(contents=elements)
@@ -239,12 +256,13 @@ class NcobjContainer(object):
         # Add a de-referenced copy of the element to ourself.
         our_element = element.detached_copy()
         self._content[name] = our_element
-        our_element.name = name
+        our_element._name = name
+        our_element._container = self
 
     def pop(self, name, default=None):
         if name in self._content:
             element = self._content.pop(name)
-            element.group = None
+            element._container = None
             result = element
         elif default:
             result = default
