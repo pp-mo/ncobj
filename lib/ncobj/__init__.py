@@ -24,6 +24,7 @@ automatically generated reference elements are created at the top level.
 
 """
 
+
 class NcObj(object):
     """
     An object representing a named information element in NetCDF.
@@ -91,6 +92,15 @@ class Dimension(NcObj):
     def detached_copy(self):
         return Dimension(name=self.name, length=self.length, group=None)
 
+    def __str__(self):
+        return '<Dimension "{}" = {}>'.format(self.name, self.length)
+
+    def __repr__(self):
+        return 'Dimension({}, length={}{})'.format(
+            self.name,
+            self.length,
+            ', group={}'.format(repr(self.group)) if self.group else '')
+
 
 class Attribute(NcObj):
     """A NetCDF attribute object."""
@@ -101,11 +111,20 @@ class Attribute(NcObj):
     def detached_copy(self):
         return Attribute(name=self.name, value=self.value, group=None)
 
+    def __str__(self):
+        return '<Attribute "{}" = {}>'.format(self.name, self.value)
+
+    def __repr__(self):
+        return 'Attribute({}, value={}{})'.format(
+            self.name,
+            self.value,
+            ', group={}'.format(repr(self.group)) if self.group else '')
+
 
 class Variable(NcObj):
     """A NetCDF dimension object."""
     def __init__(self, name,
-                 dimensions=None, dtype=None, data=None, attributes=None,
+                 dimensions=None, type=None, data=None, attributes=None,
                  group=None):
         NcObj.__init__(self, name, group)
         if dimensions is None:
@@ -114,17 +133,37 @@ class Variable(NcObj):
             dimensions = [dimensions]
         self.dimensions = dimensions
         self.attributes = NcAttributesContainer(attributes)
-        if hasattr(dtype, 'detached_copy'):
+        if hasattr(type, 'detached_copy'):
             # Needed for user-types.
-            dtype = dtype.detached_copy()
-        self.dtype = dtype
-        self._data = data
+            type = type.detached_copy()
+        self.type = type
+        self.data = data
 
     def detached_copy(self):
         return Variable(name=self.name, group=None,
-                          dimensions=[dim.detached_copy()
-                                      for dim in self.dimensions],
-                          attributes=self.attributes.detached_copy())
+                        type=self.type, data=self.data,
+                        dimensions=[dim.detached_copy()
+                                    for dim in self.dimensions],
+                        attributes=self.attributes.detached_copy())
+
+    def __str__(self):
+        repstr = '<Variable "{}":'.format(self.name)
+        repstr += ' dims=({})'.format(
+            ', '.join(d.name for d in self.dimensions))
+        repstr += ', data={}'.format(self.data)
+        if self.attributes:
+            repstr += ', attrs=({})'.format(
+                ', '.join(str(a) for a in self.attributes))
+        return repstr + ')'
+
+    def __repr__(self):
+        repstr = 'Variable({}, type={!r}'.format(self.name, self.type)
+        if self.dimensions:
+            repstr += ', dimensions={!r}'.format(self.dimensions)
+        repstr += ', data={}'.format(self.data)
+        if self.attributes:
+            repstr += ', attributes={!r}'.format(self.attributes)
+        return repstr + ')'
 
 
 class NcobjContainer(object):
@@ -232,13 +271,18 @@ class NcobjContainer(object):
     def __iter__(self):
         return self._content.itervalues()
 
-    def len(self):
+    def __len__(self):
         return len(self._content)
 
     def rename_element(self, element, new_name):
         element = self.remove(element)
         element.name = new_name
         self[new_name] = element
+
+    def __str__(self):
+        contents = ', '.join('"{}":{}'.format(el.name, el) for el in self)
+        return '<NcContainer({}): {}>'.format(
+            self._of_type.__name__, contents)
 
 
 class Group(NcObj):
@@ -265,6 +309,19 @@ class Group(NcObj):
 
     def all_variables(self):
         return list(element for element in self.treewalk_content(Variable))
+
+    def __str__(self, indent=None):
+        indent = indent or '  '
+        strmsg = '<Group "{}":'.format(self.name)
+        strmsg += '\n{}dims=({})'.format(indent, self.dimensions)
+        strmsg += '\n{}vars=({})'.format(indent, self.variables)
+        if self.attributes:
+            strmsg += '\n{}attrs=({})'.format(indent, self.attributes)
+        if self.groups:
+            strmsg += ''.join('\n' + group.__str__(indent+'  ')
+                              for group in self.groups)
+        strmsg += '\n>'
+        return strmsg
 
 
 class NcAttributesContainer(NcobjContainer):

@@ -17,13 +17,13 @@ class Test__api(tests.TestCase):
         self.nco.dimensions.add(dim_y)
         var1 = ncobj.Variable('var_A',
                  dimensions=(dim_y, dim_x),
-                 dtype=float,
+                 type=float,
                  data=[[1, 2, 3], [4, 5, 6]])
         var1.attributes.add(ncobj.Attribute('var_att_a', value='this'))
         self.nco.variables.add(var1)
         var2 = ncobj.Variable('var_B',
                  dimensions=(),
-                 dtype=float,
+                 type=float,
                  data=[])
         self.nco.variables.add(var2)
         print
@@ -36,9 +36,12 @@ class Test__api(tests.TestCase):
     def test_exclude_vars(self):
         for var in self.nco.all_variables():
             print
-            print var, var.name
+            print var
             if var.name in ('exc_1', 'exc_2'):
                 var.remove()
+        print
+        print 'new result:'
+        print '\n'.join(str(x) for x in self.nco.treewalk_content())
 #        self.nco.write(self.out_file)
 
 #    def test_strip_varattr(self):
