@@ -67,7 +67,7 @@ class NcObj(object):
             self.container.rename_element(self, name)
         else:
             # detached object.
-            self.name = name
+            self._name = name
 
 #    @abstract
     def detached_copy(self):

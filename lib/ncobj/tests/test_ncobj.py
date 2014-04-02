@@ -1,6 +1,58 @@
-import  unittest as tests
+import unittest as tests
 
+import mock
 import ncobj
+
+
+class Test_NcObj(tests.TestCase):
+    def setUp(self):
+        class MyObj(ncobj.NcObj):
+            def __eq__(self, other):
+                return other  # Use argument value as a surrogate for a test
+
+        self.nco = MyObj('myname')
+        self.mock_container = mock.Mock(spec=ncobj.NcobjContainer)
+        self.nco_contained = MyObj('myname')
+        self.nco_contained._container = self.mock_container
+
+    def test_name(self):
+        self.assertEqual(self.nco.name, 'myname')
+
+    def test_name__unwritable(self):
+        with self.assertRaises(AttributeError):
+            self.nco.name = 'newname'
+
+    def test_container__isolated(self):
+        self.assertIsNone(self.nco.container)
+
+    def test_container__unwritable(self):
+        with self.assertRaises(AttributeError):
+            self.nco.container = 'newname'
+
+    def test_rename__isolated(self):
+        self.nco.rename('newname')
+        self.assertEqual(self.nco.name, 'newname')
+
+    def test_container__contained(self):
+        self.assertEqual(self.nco_contained.container, self.mock_container)
+
+    def test_rename__contained(self):
+        self.nco_contained.rename('newname')
+        self.mock_container.rename_element.assert_called_once__with(
+            'newname')
+
+    def test___ne__True(self):
+        self.assertEqual(self.nco != True, False)
+
+    def test___ne__False(self):
+        self.assertEqual(self.nco != False, True)
+
+    def test_remove(self):
+        self.nco_contained.remove()
+        self.mock_container.pop.assert_called_once_with(
+            self.mock_container, None)
+        # NOTE: nco.container is *not* reset -- the container does that.
+
 
 class Test__api(tests.TestCase):
     def setUp(self):
