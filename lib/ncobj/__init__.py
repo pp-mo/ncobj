@@ -81,6 +81,9 @@ class NcObj(object):
         if self.container:
             self.container.pop(self, None)
 
+    def __ne__(self, other):
+        return not (self == other)
+
 
 def _prop_repr(obj, property_name):
     """Make an optional initialisation string for a property."""
@@ -112,6 +115,9 @@ class Dimension(NcObj):
             self.name,
             self.length,
             ', {}'.format(_prop_repr(self, 'group')))
+
+    def __eq__(self, other):
+        return other.name == self.name and other.length == self.length
 
 
 class Attribute(NcObj):
@@ -327,6 +333,108 @@ class Group(NcObj):
 
     def all_variables(self):
         return list(element for element in self.treewalk_content(Variable))
+
+    def _find_top_group(self):
+        group = self
+        while group.group:
+            group = group.group
+        return self
+
+    def _find_existing_definition(self, element, container_prop_name):
+        """
+        Search groups upward for a definition matching the given element.
+
+        Args:
+        * element (:class:`NcObj`):
+        element with required properties.  The definition must == this.
+        * container_prop_name (string):
+        name of the Group property to search for matching elements.
+
+        Returns:
+            An existing definition object, or None.
+
+        """
+        for own_el in getattr(self, container_prop_name):
+            if own_el == element:
+                # Found in self.
+                return element
+
+        # Not in self.  Look in parent, if any.
+        if self.group:
+            return self.group._find_existing_definition(element,
+                                                        container_prop_name)
+
+        # We have no parent, so we are done (fail).
+        return None
+
+    def _find_or_create_definition(self, element, create_at_top=False):
+        """
+        Search the group and its parents for a definition matching the element.
+        If not found, create one, and return that instead.
+
+        Args:
+        * element (:class:`NcObj`):
+        The element to search for.
+
+        Kwargs:
+        * create_at_top (bool):
+        If set, create any new references at the top Group level.  Otherwise
+        (the default), create within the local Group.
+
+        .. note::
+
+            At present, only Dimension elements can be referenced.
+            TODO: add support for UserTypes.
+
+        """
+        if isinstance(element, Dimension):
+            container_propname = 'dimensions'
+        else:
+            raise ValueError('element {} is not of a valid reference '
+                             'type.'.format(element))
+
+        ref = self._find_existing_definition(element, container_propname)
+        if not ref:
+            # Not found: create one.
+            # Work out which group to create in
+            if create_at_top:
+                group = self._find_top_group()
+            else:
+                group = self
+            defs_container = getattr(group, container_propname)
+            # Install the new definition in this group, and return it.
+            defs_container.add(element)
+            ref = defs_container(ref.name)
+            ref._group = group  # Mark as properly referenced
+
+        return ref
+
+    def resolve_all_references(self, create_at_top=False):
+        """
+        Ensure that all references within the structure are links to actual
+        definitions somewhere in the group hieararchy.
+
+        If necessary, new definition elements are created within the groups.
+
+        Kwargs:
+        * create_at_top (bool):
+        If set, place newly-created definitions in the root group.
+        Otherwise (the default), create within the Group containing the
+        reference.
+
+        """
+        # Resolve references within contained variables (only place for now),
+        for var in self.all_variables():
+            # Fix up the variable's dimensions (the only thing for now).
+            # Snapshot dimensions, so we can change the container on the fly.
+            dims = list(var.dimensions)
+            # Replace all with proper definition references.
+            for dim in dims:
+                dim = self._find_or_create_definition(dim, create_at_top)
+                # Note: we must use a low-level assignment to insert 'dim'
+                # itself, rather than a detached copy of it.
+                var.dimensions._content[dim.name] = dim
+                dim._container = var.dimensions
 
     def __str__(self, indent=None):
         indent = indent or '  '
