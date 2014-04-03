@@ -23,6 +23,7 @@ any referenced elements must must added and/or copied at the group level, as
 automatically generated reference elements are created at the top level.
 
 """
+import numpy as np
 
 
 class NcObj(object):
@@ -96,7 +97,11 @@ class Dimension(NcObj):
     """A NetCDF dimension object."""
     def __init__(self, name, length=None):
         NcObj.__init__(self, name)
-        self.length = length
+        self._length = length
+
+    @property
+    def length(self):
+        return self._length
 
     def isunlimited(self):
         return self.length is None
@@ -120,10 +125,18 @@ class Attribute(NcObj):
     """A NetCDF attribute object."""
     def __init__(self, name, value):
         NcObj.__init__(self, name)
-        self.value = value
+        self._value = value
+
+    @property
+    def value(self):
+        return self._value
 
     def detached_copy(self):
         return Attribute(name=self.name, value=self.value)
+
+    def __eq__(self, other):
+        # NOTE: attributes do not have a type.  Is this correct ???
+        return other.name == self.name and other.value == self.value
 
     def __str__(self):
         return '<Attribute "{}" = {}>'.format(self.name, self.value)
@@ -156,6 +169,13 @@ class Variable(NcObj):
                         dimensions=[dim.detached_copy()
                                     for dim in self.dimensions],
                         attributes=self.attributes.detached_contents_copy())
+
+    def __eq__(self, other):
+        return (self.name == other.name and
+                self.type == other.type and
+                np.all(self.data == other.data) and
+                self.dimensions == other.dimensions and
+                self.attributes == other.attributes)
 
     def __str__(self):
         repstr = '<Variable "{}":'.format(self.name)
@@ -309,6 +329,13 @@ class NcobjContainer(object):
 
     def __len__(self):
         return len(self._content)
+
+    def __eq__(self, other):
+        return (isinstance(other, NcobjContainer) and
+                self._content == other._content)
+
+    def __ne__(self, other):
+        return not (self == other)
 
     def rename_element(self, element, new_name):
         element = self.remove(element)

@@ -59,6 +59,63 @@ class Test_NcObj(tests.TestCase):
         # NOTE: nco.container is *not* reset -- the container does that.
 
 
+class GenericNcObjTestMixin(object):
+    """Simple functional tests to perform on all derived NcObj types."""
+    def test_detached_copy__detached(self):
+        test_el = self.test_element
+        copy_el = test_el.detached_copy()
+        self.assertIsNot(copy_el, test_el)
+        self.assertEqual(copy_el, test_el)
+
+    def test_detached_copy__attached(self):
+        test_el = self.test_element
+        test_el._container = mock.Mock(spec=ncobj.NcobjContainer)
+        copy_el = test_el.detached_copy()
+        self.assertIsNot(copy_el, test_el)
+        self.assertEqual(copy_el, test_el)
+        self.assertIsNotNone(test_el._container)
+        self.assertIsNone(copy_el._container)
+
+
+class TestDimension(tests.TestCase, GenericNcObjTestMixin):
+    def setUp(self):
+        self.test_element = ncobj.Dimension(name='test', length=5)
+        self.test_el_unlimited = ncobj.Dimension(name='test')
+
+    def test_length__unlimited(self):
+        self.assertIsNone(self.test_el_unlimited.length)
+
+    def test_length__finite(self):
+        self.assertEqual(self.test_element.length, 5)
+
+    def test_length__unwriteable(self):
+        with self.assertRaises(AttributeError):
+            self.test_element.length = 2
+
+    def test_isunlimited__unlimited(self):
+        self.assertTrue(self.test_el_unlimited.isunlimited())
+
+    def test_isunlimited__finite(self):
+        self.assertFalse(self.test_element.isunlimited())
+
+
+class TestAttribute(tests.TestCase, GenericNcObjTestMixin):
+    def setUp(self):
+        self.test_element = ncobj.Attribute(name='test', value='val')
+
+    def test_value(self):
+        self.assertEqual(self.test_element.value, 'val')
+
+    def test_value__unwriteable(self):
+        with self.assertRaises(AttributeError):
+            self.test_element.value = 2
+
+
+class TestVariable(tests.TestCase, GenericNcObjTestMixin):
+    def setUp(self):
+        self.test_element = ncobj.Variable(name='test')
+
+
 if 0:
     class Test__api(tests.TestCase):
         def setUp(self):
