@@ -1,0 +1,111 @@
+container._setitem_ref_or_copy(self, name, element, detached_copy=True):
+    """
+    Low-level item assignment, similar to "self[name] = element".
+
+    Kwargs:
+
+    * detached_copy (bool):
+        If True, the assigned value is a detached copy of the passed item, and
+        this operation is then identical to '__setitem__'.
+        When False, the actual passed element is removed from its current
+        container (if any) and put in this one.
+
+    """
+
+container.group property
+    """
+    When set, indicates that the container is used in a group object, such that
+    its contents represent definitions within that group.
+
+    .. note::
+
+        For Variables, this is practically always true, as no other elements
+        can refer to them.  Thus an NcVariablesContainer normally only ever
+        exists as part of a Group object.
+
+    """
+
+Group.resolve_all_refs(self, create_missing=True, create_at_top=False)
+    """
+    Scan for all element references within this group and its children, and
+    replace these with links to actual definitions found in any of the parent
+    groups of the reference.
+
+    This can create new definitions anywhere in the hierarchy that this group
+    belongs to, including in its parents.
+
+    Kwargs:
+
+    * create_missing (bool):
+        Whether to create matching attached definitions, when existing ones are
+        not present in the existing group structure.
+        If False, the unresolved references are left as detached elements (but
+        these may be copies of the originals).
+    * create_at_top (bool):
+        Whether to place any created missing definitions in the root group.
+        If False, missing definitions are made in the smallest enclosing
+        group.
+        With create_at_top=False, multiple independent but identical
+        definitions may be created.
+        With create_at_top=True, conflicts are possible and errors may result.
+
+        .. note::
+ 
+           When 'create_missing' is False, this key has no effect.
+
+    """
+
+#
+# NOTE: this is pretty dangerous (!)
+# Maybe need a safe public-facing wrapper, that requires call on the root.
+#
+
+Group.detached_copy(self):
+    return Group(name=self.name,
+                 dimensions=self.dimensions.detached_copy(),
+                 variables=self.variables.detached_copy(),
+                 attributes=self.attributes.detached_copy(),
+                 groups=self.groups.detached_copy())
+
+#
+# NOTE: ensure that containers created in groups are marked as belonging...
+# AFTER:: this is marked, but could use a "group=" clarifier in init.
+#
+
+#
+# NOTE !!BUG!!: existing Variable.detached_copy() is *not* making a 
+# detached_copy of its dimensions.
+#
+
+Group.copy(self, create_missing=False, create_at_top=False):
+    """
+    Create a new copy of the group, preserving internal element references
+    as far as possible, but decoupled from the existing one.
+
+    If the group contains references to elements with no definitions in the
+    group hierarchy, or in the parents of this group, these will either be left
+    unresolved, or linked to newly created definitions, as instructed.
+
+    Kwargs:
+
+    * create_missing (bool):
+        Behaviour as for 'resolve_all_refs'.  If False, the result can contain
+        unresolved references.
+    * create_at_top (bool):
+        Behaviour as for 'resolve_all_refs' (can raise an error).
+
+    """
+    # Replicate this group, but NB replica has no parent groups.
+    group = self.detached_copy()
+    # Resolve refs (internal ones will come out as they were).
+    group.resolve_all_refs(create_missing=create_missing,
+                           create_at_top=create_at_top)
+    return group
+
+
+"""
+NOTES:
+Rewrite the resolve_refs to use the new _setitem_ref_or_copy.
+Consider which of new functions need to be public
+E.G. consider use of the "find definition upwards" in file-input routine.
+"""
