@@ -45,6 +45,9 @@ class NcObj(object):
     def container(self):
         return self._container
 
+    def is_definition(self):
+        return self.container and self.container.is_definitions()
+
     @property
     def name(self):
         return self._name
@@ -67,11 +70,15 @@ class NcObj(object):
             # detached object.
             self._name = name
 
+    
 #    @abstract
 #    def detached_copy(self):
 #        """
 #        Return an independent 'unlinked' copy of this element.
 #        """
+
+#    @abstract
+#    def __eq__(self, other):
 #        pass
 
     def remove(self):
@@ -130,6 +137,10 @@ class Attribute(NcObj):
     @property
     def value(self):
         return self._value
+
+    @value.setter
+    def value(self, newval):
+        self._value = newval
 
     def detached_copy(self):
         return Attribute(name=self.name, value=self.value)
@@ -230,9 +241,15 @@ class NcobjContainer(object):
                 self.__setitem__(element.name, element.detached_copy())
                 self._content[element.name]._container = self
 
+#    @abstractproperty
+#    _of_type = None
+
     @property
     def group(self):
         return self._group
+
+    def is_definitions(self):
+        return self.group is not None
 
     def _check_element_type(self, element):
         if not isinstance(element, self._of_type):

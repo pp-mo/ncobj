@@ -106,14 +106,107 @@ class TestAttribute(tests.TestCase, GenericNcObjTestMixin):
     def test_value(self):
         self.assertEqual(self.test_element.value, 'val')
 
-    def test_value__unwriteable(self):
-        with self.assertRaises(AttributeError):
-            self.test_element.value = 2
+    def test_value__write(self):
+        # Freely rewritable for now, no typing.
+        self.test_element.value = 2
+        self.assertEqual(self.test_element.value, 2)
+        self.test_element.value = 'yes'
+        self.assertEqual(self.test_element.value, 'yes')
 
 
 class TestVariable(tests.TestCase, GenericNcObjTestMixin):
     def setUp(self):
         self.test_element = ncobj.Variable(name='test')
+
+class TestNcobjContainer(tests.TestCase):
+    def setUp(self):
+        class TestNcObj(ncobj.NcObj):
+            def detached_copy(self):
+                return TestNcObj(self.name)
+
+            def __eq__(self, other):
+                return self.name == other.name
+
+        class TestContainer(ncobj.NcobjContainer):
+            _of_type = TestNcObj
+
+        self.con = TestContainer()
+        self.parent_group = mock.Mock(spec=ncobj.Group)
+        self.con_ingroup = TestContainer(group=self.parent_group)
+        
+        self.content_a = TestNcObj('A')
+        self.content_b = TestNcObj('B')
+        self.content_c = TestNcObj('C')
+        self.con_nonempty = TestContainer([self.content_a, self.content_b])
+        self.con_nonempty_ingroup = TestContainer(
+            [self.content_a, self.content_b],
+            group=self.parent_group)
+
+    def test_group(self):
+        self.assertIsNone(self.con.group)
+
+    def test_group__ingroup(self):
+        self.assertEqual(self.con_ingroup.group, self.parent_group)
+
+    def test_group__unwriteable(self):
+        with self.assertRaises(AttributeError):
+            self.con.group = self.parent_group
+
+    def test_isdefinitions__none(self):
+        self.assertFalse(self.con.is_definitions())
+
+    def test_isdefinitions__ingroup(self):
+        self.assertTrue(self.con_ingroup.is_definitions())
+
+    def test_names__empty(self):
+        self.assertEqual(self.con.names(), [])
+
+    def test_names__nonempty(self):
+        names = self.con_nonempty.names()
+        self.assertEqual(sorted(names), ['A', 'B'])
+
+    def test_detached_contents_copy__empty(self):
+        result = self.con.detached_contents_copy()
+        self.assertIsNot(result, self.con)
+        self.assertEqual(result, self.con)
+
+    def test_detached_contents_copy__nonempty(self):
+        result = self.con_nonempty.detached_contents_copy()
+        self.assertIsNot(result, self.con_nonempty)
+        self.assertEqual(result, self.con_nonempty)
+        self.assertEqual(result.names(), self.con_nonempty.names())
+        for name in result.names():
+            self.assertEqual(result[name], self.con_nonempty[name])
+            self.assertIsNot(result[name], self.con_nonempty[name])
+
+    def test_detached_contents_copy__nonempty_ingroup(self):
+        result = self.con_nonempty_ingroup.detached_contents_copy()
+        self.assertIsNot(result, self.con_nonempty_ingroup)
+        self.assertEqual(result, self.con_nonempty_ingroup)
+        self.assertEqual(self.con_nonempty_ingroup.group, self.parent_group)
+        self.assertEqual(result.group, None)
+
+    def test___getitem___(self):
+        self.assertEqual(self.con_nonempty['A'], self.content_a)
+        with self.assertRaises(KeyError):
+            _ = self.con['ZZZ']
+
+    def test__setitem__(self):
+        with self.assertRaises(KeyError):
+            _ = self.con['A']
+        self.con['A'] = self.content_a
+        con_a = self.con['A']
+        self.assertEqual(con_a, self.content_a)
+        self.assertIsNot(con_a, self.content_a)
+
+    def test__setitem__rename(self):
+        with self.assertRaises(KeyError):
+            _ = self.con['A']
+        self.con['A'] = self.content_a
+        con_a = self.con['A']
+        self.assertEqual(con_a, self.content_a)
+        self.assertIsNot(con_a, self.content_a)
+
 
 #
 # Group is not yet testable, as __eq__ not yet defined.
