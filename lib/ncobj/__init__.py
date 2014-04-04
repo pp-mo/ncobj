@@ -23,26 +23,23 @@ any referenced elements must must added and/or copied at the group level, as
 automatically generated reference elements are created at the top level.
 
 """
+import numpy as np
 
 
 class NcObj(object):
     """
     An object representing a named information element in NetCDF.
     """
-    def __init__(self, name, container=None, group=None):
+    def __init__(self, name):
         """
         Args:
         * name (string):
         The name of this element (unique within any containing element).
-        * container (:class:`NcobjContainer`):
-        A container that this element is held in.
-        * group (:class:`Group`):
-        The group that this element is defined in.
 
         """
         self._name = name
-        self._container = container  # Parent container (if any)
-        self._group = group  # Definition group (if any)
+        # The container this is in -- initially none.
+        self._container = None
 
     @property
     def container(self):
@@ -60,8 +57,9 @@ class NcObj(object):
         * name (string):
             the new name for this element.
 
-        Note: this affects the group (NcContainer), if it is assigned to one,
-        and will raise an error if the name already exists in the group.
+        Note: this affects the container, if it is in one, and can raise an
+        error if the name already exists in the container.
+
         """
         if self.container:
             self.container.rename_element(self, name)
@@ -70,11 +68,11 @@ class NcObj(object):
             self._name = name
 
 #    @abstract
-    def detached_copy(self):
-        """
-        Return an independent 'unlinked' copy of this element.
-        """
-        pass
+#    def detached_copy(self):
+#        """
+#        Return an independent 'unlinked' copy of this element.
+#        """
+#        pass
 
     def remove(self):
         """Remove from the parent container (if any)."""
@@ -97,24 +95,27 @@ def _prop_repr(obj, property_name):
 
 class Dimension(NcObj):
     """A NetCDF dimension object."""
-    def __init__(self, name, length=None, group=None):
-        NcObj.__init__(self, name, group)
-        self.length = length
+    def __init__(self, name, length=None):
+        NcObj.__init__(self, name)
+        self._length = length
+
+    @property
+    def length(self):
+        return self._length
 
     def isunlimited(self):
         return self.length is None
 
     def detached_copy(self):
-        return Dimension(name=self.name, length=self.length, group=None)
+        return Dimension(name=self.name, length=self.length)
 
     def __str__(self):
         return '<Dimension "{}" = {}>'.format(self.name, self.length)
 
     def __repr__(self):
-        return 'Dimension({}, length={}{})'.format(
-            self.name,
-            self.length,
-            ', {}'.format(_prop_repr(self, 'group')))
+        return 'Dimension({}, length={})'.format(
+            self.name, self.length,
+            ', {}'.format(_prop_repr(self, 'container')))
 
     def __eq__(self, other):
         return other.name == self.name and other.length == self.length
@@ -122,30 +123,35 @@ class Dimension(NcObj):
 
 class Attribute(NcObj):
     """A NetCDF attribute object."""
-    def __init__(self, name, value, group=None):
-        NcObj.__init__(self, name, group)
-        self.value = value
+    def __init__(self, name, value):
+        NcObj.__init__(self, name)
+        self._value = value
+
+    @property
+    def value(self):
+        return self._value
 
     def detached_copy(self):
-        return Attribute(name=self.name, value=self.value, group=None)
+        return Attribute(name=self.name, value=self.value)
+
+    def __eq__(self, other):
+        # NOTE: attributes do not have a type.  Is this correct ???
+        return other.name == self.name and other.value == self.value
 
     def __str__(self):
         return '<Attribute "{}" = {}>'.format(self.name, self.value)
 
     def __repr__(self):
         return 'Attribute({}, value={}{}{})'.format(
-            self.name,
-            self.value,
-            ', {}'.format(_prop_repr(self, 'container')),
-            ', {}'.format(_prop_repr(self, 'group')))
+            self.name, self.value,
+            ', {}'.format(_prop_repr(self, 'container')))
 
 
 class Variable(NcObj):
     """A NetCDF variable object."""
     def __init__(self, name,
-                 dimensions=None, type=None, data=None, attributes=None,
-                 group=None):
-        NcObj.__init__(self, name, group)
+                 dimensions=None, type=None, data=None, attributes=None):
+        NcObj.__init__(self, name)
         if dimensions is None:
             dimensions = []
         elif isinstance(dimensions, Dimension):
@@ -159,11 +165,17 @@ class Variable(NcObj):
         self.data = data
 
     def detached_copy(self):
-        return Variable(name=self.name, group=None,
-                        type=self.type, data=self.data,
+        return Variable(name=self.name, type=self.type, data=self.data,
                         dimensions=[dim.detached_copy()
                                     for dim in self.dimensions],
                         attributes=self.attributes.detached_contents_copy())
+
+    def __eq__(self, other):
+        return (self.name == other.name and
+                self.type == other.type and
+                np.all(self.data == other.data) and
+                self.dimensions == other.dimensions and
+                self.attributes == other.attributes)
 
     def __str__(self):
         repstr = '<Variable "{}":'.format(self.name)
@@ -181,7 +193,7 @@ class Variable(NcObj):
             repstr += ', dimensions={!r}'.format(self.dimensions)
         repstr += ', data={}'.format(self.data)
         repstr += ', {}'.format(_prop_repr(self, 'attributes'))
-        repstr += ', {}'.format(_prop_repr(self, 'group'))
+        repstr += ', {}'.format(_prop_repr(self, 'container'))
         return repstr + ')'
 
 
@@ -192,10 +204,12 @@ class NcobjContainer(object):
     def __init__(self, contents=None, group=None):
         """
         Args:
+
         * contents (iterable):
-        A set of elements specifying the initial contents.
+            A set of elements specifying the initial contents.
         * group (:class:`Group'):
-        The group that the container (and its elements) will belong to.
+            A group that the container (and its elements) belong to.
+            If group is not None, the contents are definitions in that group.
 
         Note: the containers mostly emulate a dictionary.  A variety of
         indexing methods are provided -- __setitem__, __getitem__,
@@ -246,24 +260,42 @@ class NcobjContainer(object):
     def get(self, name, default=None):
         return self._content.get(name, default)
 
-    def __setitem__(self, name, element):
+    def setitem_reference(self, name, element, detached_copy=False):
         """
-        Place an element in the container under a given name.
+        Place an element reference in the container.
 
-        Note: content is copied from the provided element, and any grouped
-        references are resolved (e.g. dimension references are imported into
-        the group containing the 'self' element).
+        This is a low-level call, the normal __setitem__ call always makes a
+        detached copy of the assigned element.
+
+        Kwargs:
+        * detached_copy (bool):
+            If set, make a copy of the assigned element.  This behaviour is
+            then exactly the same as :meth:`NcobjContainer.__setitem__`.
+
         """
         self._check_element_type(element)
         self._check_element_name(name)
         if name in self.names():
             raise ValueError('An element named "{}" already exists.'.format(
                 name))
-        # Add a de-referenced copy of the element to ourself.
-        our_element = element.detached_copy()
-        self._content[name] = our_element
-        our_element._name = name
-        our_element._container = self
+        if detached_copy:
+            # Make a de-referenced copy of the element to add in.
+            element = element.detached_copy()
+        else:
+            # Adding this actual element. Remove from any existing.
+            element.remove()
+        element._name = name
+        self._content[name] = element
+        element._container = self
+
+    def __setitem__(self, name, element):
+        """
+        Place an element in the container under a given name.
+
+        Note: content is copied from the provided element.  To insert an
+        existing NcObj, see :meth:`NcobjContainer.setitem_copy_or_ref`.
+        """
+        self.setitem_reference(name, element, detached_copy=True)
 
     def pop(self, name, default=None):
         if name in self._content:
@@ -298,26 +330,41 @@ class NcobjContainer(object):
     def __len__(self):
         return len(self._content)
 
+    def __eq__(self, other):
+        return (isinstance(other, NcobjContainer) and
+                self._content == other._content)
+
+    def __ne__(self, other):
+        return not (self == other)
+
     def rename_element(self, element, new_name):
         element = self.remove(element)
         element.name = new_name
         self[new_name] = element
 
     def __str__(self):
-        contents = ', '.join('"{}":{}'.format(el.name, el) for el in self)
+        contents = ', '.join('{}'.format(el) for el in self)
         return '<NcContainer({}): {}>'.format(
             self._of_type.__name__, contents)
 
 
 class Group(NcObj):
-    def __init__(self, name='', parent_group=None,
+    def __init__(self, name='',
                  dimensions=None, variables=None, attributes=None,
-                 sub_groups=None):
-        NcObj.__init__(self, name, group=parent_group)
-        self.dimensions = NcDimensionsContainer(dimensions, self)
-        self.variables = NcVariablesContainer(variables, self)
-        self.attributes = NcAttributesContainer(attributes, self)
-        self.groups = NcGroupsContainer(sub_groups, self)
+                 sub_groups=None,
+                 parent_group=None):
+        NcObj.__init__(self, name)
+        self._parent = parent_group
+        self.dimensions = NcDimensionsContainer(dimensions, group=self)
+        self.variables = NcVariablesContainer(variables, group=self)
+        self.attributes = NcAttributesContainer(attributes, group=self)
+        self.groups = NcGroupsContainer(sub_groups, group=self)
+        for group in self.groups:
+            group._parent = self
+
+    @property
+    def parent_group(self):
+        return self._parent
 
     def treewalk_content(self, return_types=None):
         if return_types is None or isinstance(self, return_types):

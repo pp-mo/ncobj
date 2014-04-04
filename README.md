@@ -8,10 +8,10 @@ arbitrary changes.  Intended scope similar to NCO commands.
 
 Present Status
 --------------
-2014-04-04
-  Still reworking bsaic code + writing tests.
-  Some unit tests written + working.
-  No working file i/o yet.
+2014-04-04:
+ *  Still reworking core classes + writing tests.
+ * Some unit tests written + working.
+ * No working file i/o yet.
 
 Further motivation and ideas :
 ------------------------------
