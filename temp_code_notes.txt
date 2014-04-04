@@ -109,3 +109,15 @@ Rewrite the resolve_refs to use the new _setitem_ref_or_copy.
 Consider which of new functions need to be public
 E.G. consider use of the "find definition upwards" in file-input routine.
 """
+
+
+MORE To-dos:
+NcObj rename to NcElement ?
+elements may be nameless, (but not in containers)
+  - this will simplify API (Group()), but then also alter tests.
+remove keywords from setitem stuff
+likewise reconsider the find/replace stuff + remove keywords
+  -- maybe resolve_internal_refs, return remainder + fix
+container should be traceable to an element that contains it (if any)
+  -- required by "fix these missing refs" approach
+
