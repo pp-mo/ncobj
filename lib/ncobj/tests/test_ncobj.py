@@ -115,6 +115,14 @@ class TestVariable(tests.TestCase, GenericNcObjTestMixin):
     def setUp(self):
         self.test_element = ncobj.Variable(name='test')
 
+#
+# Group is not yet testable, as __eq__ not yet defined.
+#
+if 0:
+    class TestGroup(tests.TestCase, GenericNcObjTestMixin):
+        def setUp(self):
+            self.test_element = ncobj.Group(name='test')
+
 
 if 0:
     class Test__api(tests.TestCase):

@@ -68,11 +68,11 @@ class NcObj(object):
             self._name = name
 
 #    @abstract
-    def detached_copy(self):
-        """
-        Return an independent 'unlinked' copy of this element.
-        """
-        pass
+#    def detached_copy(self):
+#        """
+#        Return an independent 'unlinked' copy of this element.
+#        """
+#        pass
 
     def remove(self):
         """Remove from the parent container (if any)."""
@@ -352,17 +352,19 @@ class Group(NcObj):
     def __init__(self, name='',
                  dimensions=None, variables=None, attributes=None,
                  sub_groups=None,
-                 in_group=None):
+                 parent_group=None):
         NcObj.__init__(self, name)
-        self._group = in_group
+        self._parent = parent_group
         self.dimensions = NcDimensionsContainer(dimensions, group=self)
         self.variables = NcVariablesContainer(variables, group=self)
         self.attributes = NcAttributesContainer(attributes, group=self)
         self.groups = NcGroupsContainer(sub_groups, group=self)
+        for group in self.groups:
+            group._parent = self
 
     @property
-    def group(self):
-        return self._group
+    def parent_group(self):
+        return self._parent
 
     def treewalk_content(self, return_types=None):
         if return_types is None or isinstance(self, return_types):
