@@ -131,8 +131,9 @@ class TestNcobjContainer(tests.TestCase):
             _of_type = TestNcObj
 
         self.con = TestContainer()
+        self.parent_element = mock.Mock(spec=ncobj.NcObj)
         self.parent_group = mock.Mock(spec=ncobj.Group)
-        self.con_ingroup = TestContainer(group=self.parent_group)
+        self.con_ingroup = TestContainer(in_element=self.parent_group)
         
         self.content_a = TestNcObj('A')
         self.content_b = TestNcObj('B')
@@ -140,17 +141,17 @@ class TestNcobjContainer(tests.TestCase):
         self.con_nonempty = TestContainer([self.content_a, self.content_b])
         self.con_nonempty_ingroup = TestContainer(
             [self.content_a, self.content_b],
-            group=self.parent_group)
+            in_element=self.parent_group)
 
-    def test_group(self):
-        self.assertIsNone(self.con.group)
+    def test_in_object(self):
+        self.assertIsNone(self.con.in_element)
 
     def test_group__ingroup(self):
-        self.assertEqual(self.con_ingroup.group, self.parent_group)
+        self.assertEqual(self.con_ingroup.in_element, self.parent_group)
 
     def test_group__unwriteable(self):
         with self.assertRaises(AttributeError):
-            self.con.group = self.parent_group
+            self.con.in_element = self.parent_group
 
     def test_isdefinitions__none(self):
         self.assertFalse(self.con.is_definitions())
@@ -183,8 +184,8 @@ class TestNcobjContainer(tests.TestCase):
         result = self.con_nonempty_ingroup.detached_contents_copy()
         self.assertIsNot(result, self.con_nonempty_ingroup)
         self.assertEqual(result, self.con_nonempty_ingroup)
-        self.assertEqual(self.con_nonempty_ingroup.group, self.parent_group)
-        self.assertEqual(result.group, None)
+        self.assertEqual(self.con_nonempty_ingroup.in_element, self.parent_group)
+        self.assertEqual(result.in_element, None)
 
     def test___getitem___(self):
         self.assertEqual(self.con_nonempty['A'], self.content_a)

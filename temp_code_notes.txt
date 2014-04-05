@@ -1,29 +1,3 @@
-container._setitem_ref_or_copy(self, name, element, detached_copy=True):
-    """
-    Low-level item assignment, similar to "self[name] = element".
-
-    Kwargs:
-
-    * detached_copy (bool):
-        If True, the assigned value is a detached copy of the passed item, and
-        this operation is then identical to '__setitem__'.
-        When False, the actual passed element is removed from its current
-        container (if any) and put in this one.
-
-    """
-
-container.group property
-    """
-    When set, indicates that the container is used in a group object, such that
-    its contents represent definitions within that group.
-
-    .. note::
-
-        For Variables, this is practically always true, as no other elements
-        can refer to them.  Thus an NcVariablesContainer normally only ever
-        exists as part of a Group object.
-
-    """
 
 Group.resolve_all_refs(self, create_missing=True, create_at_top=False)
     """
@@ -67,16 +41,6 @@ Group.detached_copy(self):
                  attributes=self.attributes.detached_copy(),
                  groups=self.groups.detached_copy())
 
-#
-# NOTE: ensure that containers created in groups are marked as belonging...
-# AFTER:: this is marked, but could use a "group=" clarifier in init.
-#
-
-#
-# NOTE !!BUG!!: existing Variable.detached_copy() is *not* making a 
-# detached_copy of its dimensions.
-#
-
 Group.copy(self, create_missing=False, create_at_top=False):
     """
     Create a new copy of the group, preserving internal element references
@@ -111,13 +75,23 @@ E.G. consider use of the "find definition upwards" in file-input routine.
 """
 
 
+
 MORE To-dos:
+============
+
 NcObj rename to NcElement ?
+    NetCDF datamodel description call these 'components'
+    --but the word is not repeated ??
+    https://www.unidata.ucar.edu/software/netcdf/docs/data_model.html
+
 elements may be nameless, (but not in containers)
   - this will simplify API (Group()), but then also alter tests.
-remove keywords from setitem stuff
-likewise reconsider the find/replace stuff + remove keywords
+reconsider the find/replace stuff + remove keywords
   -- maybe resolve_internal_refs, return remainder + fix
-container should be traceable to an element that contains it (if any)
-  -- required by "fix these missing refs" approach
+
+Lots of the group-level functions do not need to reside in the Group class.
+With suitable public manipulation functions, such as NcObj.setitem_raw (or
+whatever), all these structural operations could usefully be defined in an
+independent module.
+
 

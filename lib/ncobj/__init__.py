@@ -212,15 +212,16 @@ class NcobjContainer(object):
     """
     A generic (abstract) container object for NetCDF elements.
     """
-    def __init__(self, contents=None, group=None):
+    def __init__(self, contents=None, in_element=None):
         """
         Args:
 
         * contents (iterable):
             A set of elements specifying the initial contents.
-        * group (:class:`Group'):
-            A group that the container (and its elements) belong to.
-            If group is not None, the contents are definitions in that group.
+        * in_element (:class:`NcObj'):
+            The element that this container exists in (if any).
+            If this is a group, then the container's elements are definitions
+            in that group (and self.is_definitions() is True).
 
         Note: the containers mostly emulate a dictionary.  A variety of
         indexing methods are provided -- __setitem__, __getitem__,
@@ -234,22 +235,21 @@ class NcobjContainer(object):
         TODO: probably more constraints on names for NetCDF validity ??
 
         """
-        self._group = group
+        self._in_element = in_element
         self._content = {}
         if contents:
             for element in contents:
                 self.__setitem__(element.name, element.detached_copy())
-                self._content[element.name]._container = self
 
 #    @abstractproperty
 #    _of_type = None
 
     @property
-    def group(self):
-        return self._group
+    def in_element(self):
+        return self._in_element
 
     def is_definitions(self):
-        return self.group is not None
+        return isinstance(self.in_element, Group)
 
     def _check_element_type(self, element):
         if not isinstance(element, self._of_type):
@@ -277,19 +277,8 @@ class NcobjContainer(object):
     def get(self, name, default=None):
         return self._content.get(name, default)
 
-    def setitem_reference(self, name, element, detached_copy=False):
-        """
-        Place an element reference in the container.
-
-        This is a low-level call, the normal __setitem__ call always makes a
-        detached copy of the assigned element.
-
-        Kwargs:
-        * detached_copy (bool):
-            If set, make a copy of the assigned element.  This behaviour is
-            then exactly the same as :meth:`NcobjContainer.__setitem__`.
-
-        """
+    def _setitem_ref_or_copy(self, name, element, detached_copy=False):
+        # Assign as self[name]=element, taking a copy if specified.
         self._check_element_type(element)
         self._check_element_name(name)
         if name in self.names():
@@ -305,14 +294,28 @@ class NcobjContainer(object):
         self._content[name] = element
         element._container = self
 
+    def setitem_reference(self, name, element):
+        """
+        Put an element reference in the container, as _content[name]=value.
+
+        This is a lower-level operation than __setitem__, with important
+        side-effects on the 'element' arg: Whereas __setitem__ treats the
+        assigned element simply as a value, of which it makes a detached copy,
+        this method inserts the actual element specified (first removing it
+        from any existing parent container).
+
+        """
+        self._setitem_ref_or_copy(name, element, detached_copy=False)
+
     def __setitem__(self, name, element):
         """
         Place an element in the container under a given name.
 
         Note: content is copied from the provided element.  To insert an
-        existing NcObj, see :meth:`NcobjContainer.setitem_copy_or_ref`.
+        actual existing NcObj, use :meth:`NcobjContainer.setitem_reference`.
+
         """
-        self.setitem_reference(name, element, detached_copy=True)
+        self._setitem_ref_or_copy(name, element, detached_copy=True)
 
     def pop(self, name, default=None):
         if name in self._content:
@@ -340,6 +343,14 @@ class NcobjContainer(object):
         if element is not own_element:
             raise KeyError(element)
         return self.pop(name)
+
+    def add_allof(self, elements):
+        for element in elements:
+            self.add(element)
+
+    def remove_allof(self, elements):
+        for element in elements:
+            self.remove(element)
 
     def __iter__(self):
         return self._content.itervalues()
@@ -372,10 +383,10 @@ class Group(NcObj):
                  parent_group=None):
         NcObj.__init__(self, name)
         self._parent = parent_group
-        self.dimensions = NcDimensionsContainer(dimensions, group=self)
-        self.variables = NcVariablesContainer(variables, group=self)
-        self.attributes = NcAttributesContainer(attributes, group=self)
-        self.groups = NcGroupsContainer(sub_groups, group=self)
+        self.dimensions = NcDimensionsContainer(dimensions, in_object=self)
+        self.variables = NcVariablesContainer(variables, in_object=self)
+        self.attributes = NcAttributesContainer(attributes, in_object=self)
+        self.groups = NcGroupsContainer(sub_groups, in_object=self)
         for group in self.groups:
             group._parent = self
 
@@ -398,10 +409,10 @@ class Group(NcObj):
     def all_variables(self):
         return list(element for element in self.treewalk_content(Variable))
 
-    def _find_top_group(self):
+    def find_root_group(self):
         group = self
-        while group.group:
-            group = group.group
+        while group.parent_group:
+            group = group.parent_group
         return self
 
     def _find_existing_definition(self, element, container_prop_name):
@@ -424,9 +435,9 @@ class Group(NcObj):
                 return element
 
         # Not in self.  Look in parent, if any.
-        if self.group:
-            return self.group._find_existing_definition(element,
-                                                        container_prop_name)
+        if self.parent_group:
+            return self.parent_group._find_existing_definition(
+                element, container_prop_name)
 
         # We have no parent, so we are done (fail).
         return None
@@ -462,14 +473,12 @@ class Group(NcObj):
             # Not found: create one.
             # Work out which group to create in
             if create_at_top:
-                group = self._find_top_group()
+                group = self.find_root_group()
             else:
                 group = self
             defs_container = getattr(group, container_propname)
             # Install the new definition in this group, and return it.
             defs_container.add(element)
-            ref = defs_container(ref.name)
-            ref._group = group  # Mark as properly referenced
 
         return ref
 
@@ -497,8 +506,7 @@ class Group(NcObj):
                 dim = self._find_or_create_definition(dim, create_at_top)
                 # Note: we must use a low-level assignment to insert 'dim'
                 # itself, rather than a detached copy of it.
-                var.dimensions._content[dim.name] = dim
-                dim._container = var.dimensions
+                var.dimensions.setitem_reference(dim.name, dim)
 
     def __str__(self, indent=None):
         indent = indent or '  '

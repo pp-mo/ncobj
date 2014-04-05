@@ -19,5 +19,8 @@ Further motivation and ideas :
    * we are solving this by defining how to recreate missing dims etc.
  * a deferred access for variables data should certainly be available
  * ultimately, this should include the ability to performed streamed operations on files larger than the memory
-   * e.g. https://github.com/SciTools/biggus
-   
+   * e.g. see https://github.com/SciTools/biggus
+ * a straightforward read-modify-write will not be efficient for making simple
+changes to existing files (like the existing NetCDF4).  Should be able to
+compare content with an existing file and optimise, especially when variables
+data already exists in the file (visible from the deferred representation).
