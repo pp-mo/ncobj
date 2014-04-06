@@ -30,16 +30,24 @@ class Test_NcObj(tests.TestCase):
     def test_container__isolated(self):
         self.assertIsNone(self.nco.container)
 
+    def test_container__contained(self):
+        self.assertEqual(self.nco_contained.container, self.mock_container)
+
     def test_container__unwritable(self):
         with self.assertRaises(AttributeError):
             self.nco.container = 'newname'
 
+    def test_is_definition__isolated(self):
+        self.assertFalse(self.nco.is_definition())
+
+    def test_is_definition__contained(self):
+        testval = mock.sentinel.isdef_retval
+        self.mock_container.is_definitions = mock.Mock(return_value=testval)
+        self.assertEqual(self.nco_contained.is_definition(), testval)
+
     def test_rename__isolated(self):
         self.nco.rename('newname')
         self.assertEqual(self.nco.name, 'newname')
-
-    def test_container__contained(self):
-        self.assertEqual(self.nco_contained.container, self.mock_container)
 
     def test_rename__contained(self):
         self.nco_contained.rename('newname')
@@ -54,9 +62,9 @@ class Test_NcObj(tests.TestCase):
 
     def test_remove(self):
         self.nco_contained.remove()
-        self.mock_container.pop.assert_called_once_with(
-            self.nco_contained, None)
-        # NOTE: nco.container is *not* reset -- the container does that.
+        self.mock_container.remove.assert_called_once_with(self.nco_contained)
+        # NOTE: nco.container is *not* reset in this test 
+        #  -- that is done in the implementation of the real container.
 
 
 class GenericNcObjTestMixin(object):
@@ -77,7 +85,7 @@ class GenericNcObjTestMixin(object):
         self.assertIsNone(copy_el._container)
 
 
-class TestDimension(tests.TestCase, GenericNcObjTestMixin):
+class Test_Dimension(tests.TestCase, GenericNcObjTestMixin):
     def setUp(self):
         self.test_element = ncobj.Dimension(name='test', length=5)
         self.test_el_unlimited = ncobj.Dimension(name='test')
@@ -99,7 +107,7 @@ class TestDimension(tests.TestCase, GenericNcObjTestMixin):
         self.assertFalse(self.test_element.isunlimited())
 
 
-class TestAttribute(tests.TestCase, GenericNcObjTestMixin):
+class Test_Attribute(tests.TestCase, GenericNcObjTestMixin):
     def setUp(self):
         self.test_element = ncobj.Attribute(name='test', value='val')
 
@@ -114,11 +122,11 @@ class TestAttribute(tests.TestCase, GenericNcObjTestMixin):
         self.assertEqual(self.test_element.value, 'yes')
 
 
-class TestVariable(tests.TestCase, GenericNcObjTestMixin):
+class Test_Variable(tests.TestCase, GenericNcObjTestMixin):
     def setUp(self):
         self.test_element = ncobj.Variable(name='test')
 
-class TestNcobjContainer(tests.TestCase):
+class Test_NcobjContainer(tests.TestCase):
     def setUp(self):
         class TestNcObj(ncobj.NcObj):
             def detached_copy(self):
@@ -131,7 +139,6 @@ class TestNcobjContainer(tests.TestCase):
             _of_type = TestNcObj
 
         self.con = TestContainer()
-        self.parent_element = mock.Mock(spec=ncobj.NcObj)
         self.parent_group = mock.Mock(spec=ncobj.Group)
         self.con_ingroup = TestContainer(in_element=self.parent_group)
         
@@ -143,13 +150,13 @@ class TestNcobjContainer(tests.TestCase):
             [self.content_a, self.content_b],
             in_element=self.parent_group)
 
-    def test_in_object(self):
+    def test_in_element__none(self):
         self.assertIsNone(self.con.in_element)
 
-    def test_group__ingroup(self):
+    def test_in_element__ingroup(self):
         self.assertEqual(self.con_ingroup.in_element, self.parent_group)
 
-    def test_group__unwriteable(self):
+    def test_in_element__unwriteable(self):
         with self.assertRaises(AttributeError):
             self.con.in_element = self.parent_group
 
@@ -199,23 +206,108 @@ class TestNcobjContainer(tests.TestCase):
         con_a = self.con['A']
         self.assertEqual(con_a, self.content_a)
         self.assertIsNot(con_a, self.content_a)
+        self.assertEqual(con_a.container, self.con)
+        self.assertIsNone(self.content_a.container)
 
     def test__setitem__rename(self):
-        with self.assertRaises(KeyError):
-            _ = self.con['A']
+        self.assertNotEqual(self.content_a.name, 'Z')
+        self.assertTrue('Z' not in self.con.names())
+        self.con['Z'] = self.content_a
+        self.assertNotEqual(self.content_a.name, 'Z')
+        self.assertTrue('Z' in self.con.names())
+
+    def test__setitem__badtype(self):
+        class TestNcObjAlternative(ncobj.NcObj):
+            pass
+        with self.assertRaises(TypeError):
+            self.con['any'] = TestNcObjAlternative('A')
+
+    def test__setitem__badname(self):
+        with self.assertRaises(ValueError):
+            self.con[1] = self.content_a
+        with self.assertRaises(ValueError):
+            self.con[''] = self.content_a
+
+    def test__setitem__nameclash(self):
+        self.assertTrue(self.content_a not in self.con)
         self.con['A'] = self.content_a
-        con_a = self.con['A']
+        self.assertTrue(self.content_a in self.con)
+        with self.assertRaises(ValueError):
+            self.con['A'] = self.content_a
+
+    def test_get__empty(self):
+        self.assertIsNone(self.con.get('A'))
+        tempdef = mock.sentinel.con_get_default
+        self.assertEqual(self.con.get('A', tempdef), tempdef)
+
+    def test_get__nonempty(self):
+        con_a = self.con_nonempty.get('A')
         self.assertEqual(con_a, self.content_a)
-        self.assertIsNot(con_a, self.content_a)
+        self.assertIn(con_a, self.con_nonempty)
+        self.assertEqual(self.con_nonempty.get('Z'), None)
+        tempdef = mock.sentinel.con_get_default
+        self.assertEqual(self.con.get('Z', tempdef), tempdef)
+
+    def test_pop(self):
+        with self.assertRaises(KeyError):
+            _ = self.con.pop('A')
+        con_a = self.con_nonempty['A']
+        self.assertEqual(con_a.container, self.con_nonempty)
+        self.assertIn(con_a, self.con_nonempty)
+        result = self.con_nonempty.pop('A')
+        self.assertEqual(sorted(self.con_nonempty.names()), ['B'])
+        self.assertIs(result, con_a)
+        self.assertNotIn(con_a, self.con_nonempty)
+        self.assertIsNone(con_a.container)
+
+    def test__delitem__(self):
+        with self.assertRaises(KeyError):
+            del self.con['A']
+        del self.con_nonempty['B']
+        self.assertEqual(sorted(self.con_nonempty.names()), ['A'])
+        
+    def test_remove(self):
+        with self.assertRaises(KeyError) as err_context:
+            _ = self.con.remove(self.content_a)
+        self.assertEqual(err_context.exception.args, (self.content_a,))
+        result = self.con_nonempty.pop('A')
+        self.assertEqual(result, self.content_a)
+        self.assertEqual(sorted(self.con_nonempty.names()), ['B'])
+
+    def test_add(self):
+        self.con.add(self.content_a)
+        self.assertIn(self.content_a, self.con)
+        with self.assertRaises(ValueError):
+            self.con.add(self.content_a)
+
+    def test__iter__(self):
+        with self.assertRaises(StopIteration):
+            _ = iter(self.con).next()
+        self.assertEqual(iter(self.con_nonempty).next(), self.content_a)
+        self.assertTrue(self.content_a not in self.con)
+        self.assertTrue(self.content_a in self.con_nonempty)
+        self.assertTrue(list(self.con_nonempty),
+                        [self.content_a, self.content_b])
+
+    def test_len(self):
+        self.assertEqual(len(self.con), 0)
+        self.assertEqual(len(self.con_nonempty), 2)
+
+    def test_rename_element(self):
+        con_a = self.con_nonempty['A']
+        self.con_nonempty.rename_element(con_a, 'Q')
+        self.assertEqual(self.con_nonempty['Q'], con_a)
+        self.assertEqual(con_a.name, 'Q')
+        self.assertEqual(con_a.container, self.con_nonempty)
+        self.assertEqual(sorted(self.con_nonempty.names()), ['B', 'Q'])
 
 
 #
 # Group is not yet testable, as __eq__ not yet defined.
 #
-if 0:
-    class TestGroup(tests.TestCase, GenericNcObjTestMixin):
-        def setUp(self):
-            self.test_element = ncobj.Group(name='test')
+#class TestGroup(tests.TestCase, GenericNcObjTestMixin):
+#    def setUp(self):
+#        self.test_element = ncobj.Group(name='test')
 
 
 if 0:

@@ -30,13 +30,15 @@ class NcObj(object):
     """
     An object representing a named information element in NetCDF.
     """
-    def __init__(self, name):
+    def __init__(self, name=None):
         """
         Args:
         * name (string):
         The name of this element (unique within any containing element).
 
         """
+        if name is None:
+            name = ''
         self._name = name
         # The container this is in -- initially none.
         self._container = None
@@ -70,7 +72,6 @@ class NcObj(object):
             # detached object.
             self._name = name
 
-    
 #    @abstract
 #    def detached_copy(self):
 #        """
@@ -84,7 +85,7 @@ class NcObj(object):
     def remove(self):
         """Remove from the parent container (if any)."""
         if self.container:
-            self.container.pop(self, None)
+            self.container.remove(self)
 
     def __ne__(self, other):
         return not (self == other)
@@ -253,11 +254,11 @@ class NcobjContainer(object):
 
     def _check_element_type(self, element):
         if not isinstance(element, self._of_type):
-            raise ValueError('Element named "{}" is not a {}, so cannot be '
-                             'included in  a {} container.'.format(
-                                 element.name,
-                                 self._of_type.__name__,
-                                 self.__class__.__name__))
+            raise TypeError('Element named "{}" is not a {}, so cannot be '
+                            'included in  a {} container.'.format(
+                                element.name,
+                                self._of_type.__name__,
+                                self.__class__.__name__))
 
     def _check_element_name(self, name):
         if not isinstance(name, basestring) or len(name) == 0:
@@ -317,32 +318,24 @@ class NcobjContainer(object):
         """
         self._setitem_ref_or_copy(name, element, detached_copy=True)
 
-    def pop(self, name, default=None):
-        if name in self._content:
-            element = self._content.pop(name)
-            element._container = None
-            result = element
-        elif default:
-            result = default
-        else:
-            raise KeyError(name)
+    def pop(self, name):
+        result = self._content.pop(name)
+        result._container = None
         return result
 
     def __delitem__(self, name):
         self.pop(name)
+
+    def remove(self, element):
+        if element not in self._content.values():
+            raise KeyError(element)
+        return self.pop(element.name)
 
     def add(self, element):
         """
         Place an element in the container under its existing name.
         """
         self[element.name] = element
-
-    def remove(self, element):
-        name = element.name
-        own_element = self._content[name]
-        if element is not own_element:
-            raise KeyError(element)
-        return self.pop(name)
 
     def add_allof(self, elements):
         for element in elements:
@@ -367,8 +360,7 @@ class NcobjContainer(object):
 
     def rename_element(self, element, new_name):
         element = self.remove(element)
-        element.name = new_name
-        self[new_name] = element
+        self.setitem_reference(new_name, element)
 
     def __str__(self):
         contents = ', '.join('{}'.format(el) for el in self)
@@ -383,12 +375,22 @@ class Group(NcObj):
                  parent_group=None):
         NcObj.__init__(self, name)
         self._parent = parent_group
-        self.dimensions = NcDimensionsContainer(dimensions, in_object=self)
-        self.variables = NcVariablesContainer(variables, in_object=self)
-        self.attributes = NcAttributesContainer(attributes, in_object=self)
-        self.groups = NcGroupsContainer(sub_groups, in_object=self)
+        self.dimensions = NcDimensionsContainer(dimensions, in_element=self)
+        self.variables = NcVariablesContainer(variables, in_element=self)
+        self.attributes = NcAttributesContainer(attributes, in_element=self)
+        self.groups = NcGroupsContainer(sub_groups, in_element=self)
         for group in self.groups:
             group._parent = self
+
+    #
+    # TODO: remove all the structural operations related to definitions
+    # resolution to a separate module, creating extra public API methods for
+    # containers and Groups as necessary (may already have what's needed?).
+    #
+
+    # Publish which of our properties are simple definitions containers.
+    # N.B. does *not* include 'groups'.
+    definitions_property_names = ('dimensions', 'variables', 'attributes')
 
     @property
     def parent_group(self):
