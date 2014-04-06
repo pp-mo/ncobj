@@ -15,6 +15,10 @@ class Test_NcObj(tests.TestCase):
                 # Test argument as surrogate for compare.
                 return other == _match_val
 
+            def detached_copy(self):
+                # (Abstract method requires a definition).
+                pass
+
         self.nco = MyObj('myname')
         self.mock_container = mock.Mock(spec=ncobj.NcobjContainer)
         self.nco_contained = MyObj('myname')
@@ -63,7 +67,7 @@ class Test_NcObj(tests.TestCase):
     def test_remove(self):
         self.nco_contained.remove()
         self.mock_container.remove.assert_called_once_with(self.nco_contained)
-        # NOTE: nco.container is *not* reset in this test 
+        # NOTE: nco.container is *not* reset in this test
         #  -- that is done in the implementation of the real container.
 
 
@@ -83,6 +87,24 @@ class GenericNcObjTestMixin(object):
         self.assertEqual(copy_el, test_el)
         self.assertIsNotNone(test_el._container)
         self.assertIsNone(copy_el._container)
+
+    def test__eq__(self):
+        el = self.test_element
+        el_eq = el.detached_copy()
+        el_ne = el.detached_copy()
+        el_ne.rename('q')
+        self.assertTrue(el == el)
+        self.assertTrue(el == el_eq)
+        self.assertFalse(el == el_ne)
+
+    def test__ne__(self):
+        el = self.test_element
+        el_eq = el.detached_copy()
+        el_ne = el.detached_copy()
+        el_ne.rename('q')
+        self.assertFalse(el != el)
+        self.assertFalse(el != el_eq)
+        self.assertTrue(el != el_ne)
 
 
 class Test_Dimension(tests.TestCase, GenericNcObjTestMixin):
@@ -126,6 +148,7 @@ class Test_Variable(tests.TestCase, GenericNcObjTestMixin):
     def setUp(self):
         self.test_element = ncobj.Variable(name='test')
 
+
 class Test_NcobjContainer(tests.TestCase):
     def setUp(self):
         class TestNcObj(ncobj.NcObj):
@@ -136,12 +159,19 @@ class Test_NcobjContainer(tests.TestCase):
                 return self.name == other.name
 
         class TestContainer(ncobj.NcobjContainer):
-            _of_type = TestNcObj
+            @property
+            def _of_type(self):
+                return TestNcObj
+
+# This way tests a specific type + its container.
+# Only Variable or Group can actually be created with just a name arg.
+#        TestNcObj = ncobj.Variable
+#        TestContainer = ncobj.NcVariablesContainer
 
         self.con = TestContainer()
         self.parent_group = mock.Mock(spec=ncobj.Group)
         self.con_ingroup = TestContainer(in_element=self.parent_group)
-        
+
         self.content_a = TestNcObj('A')
         self.content_b = TestNcObj('B')
         self.content_c = TestNcObj('C')
@@ -191,7 +221,8 @@ class Test_NcobjContainer(tests.TestCase):
         result = self.con_nonempty_ingroup.detached_contents_copy()
         self.assertIsNot(result, self.con_nonempty_ingroup)
         self.assertEqual(result, self.con_nonempty_ingroup)
-        self.assertEqual(self.con_nonempty_ingroup.in_element, self.parent_group)
+        self.assertEqual(self.con_nonempty_ingroup.in_element,
+                         self.parent_group)
         self.assertEqual(result.in_element, None)
 
     def test___getitem___(self):
@@ -265,7 +296,7 @@ class Test_NcobjContainer(tests.TestCase):
             del self.con['A']
         del self.con_nonempty['B']
         self.assertEqual(sorted(self.con_nonempty.names()), ['A'])
-        
+
     def test_remove(self):
         with self.assertRaises(KeyError) as err_context:
             _ = self.con.remove(self.content_a)
@@ -302,16 +333,20 @@ class Test_NcobjContainer(tests.TestCase):
         self.assertEqual(sorted(self.con_nonempty.names()), ['B', 'Q'])
 
 
-#
-# Group is not yet testable, as __eq__ not yet defined.
-#
-#class TestGroup(tests.TestCase, GenericNcObjTestMixin):
-#    def setUp(self):
-#        self.test_element = ncobj.Group(name='test')
+class Test_Group(tests.TestCase, GenericNcObjTestMixin):
+    def setUp(self):
+        self.test_element = ncobj.Group()
 
+    def parent_group__orphan(self):
+        self.assertIsNone(self.test_element.parent_group)
+
+    def parent_group__child(self):
+        parent = self.test_element
+        child = ncobj.Group('child_name', parent_group=parent)
+        self.assertEqual(child.parent_group, parent)
 
 if 0:
-    class Test__api(tests.TestCase):
+    class Test__api(tests.TestCase):    
         def setUp(self):
     #        self.input_dataset = object()
 
@@ -343,14 +378,15 @@ if 0:
     #        nco.write()
 
         def test_exclude_vars(self):
-            for var in self.nco.all_variables():
+            import ncobj.grouping as og
+            for var in og.walk_group_objects(self.nco, ncobj.Variable):
                 print
                 print var
                 if var.name in ('exc_1', 'exc_2'):
                     var.remove()
             print
             print 'new result:'
-            print '\n'.join(str(x) for x in self.nco.treewalk_content())
+            print '\n'.join(str(x) for x in og.walk_group_objects(self.nco))
     #        self.nco.write(self.out_file)
 
     #    def test_strip_varattr(self):

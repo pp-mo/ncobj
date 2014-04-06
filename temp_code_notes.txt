@@ -34,13 +34,6 @@ Group.resolve_all_refs(self, create_missing=True, create_at_top=False)
 # Maybe need a safe public-facing wrapper, that requires call on the root.
 #
 
-Group.detached_copy(self):
-    return Group(name=self.name,
-                 dimensions=self.dimensions.detached_copy(),
-                 variables=self.variables.detached_copy(),
-                 attributes=self.attributes.detached_copy(),
-                 groups=self.groups.detached_copy())
-
 Group.copy(self, create_missing=False, create_at_top=False):
     """
     Create a new copy of the group, preserving internal element references
@@ -67,14 +60,6 @@ Group.copy(self, create_missing=False, create_at_top=False):
     return group
 
 
-"""
-NOTES:
-Rewrite the resolve_refs to use the new _setitem_ref_or_copy.
-Consider which of new functions need to be public
-E.G. consider use of the "find definition upwards" in file-input routine.
-"""
-
-
 
 MORE To-dos:
 ============
@@ -83,15 +68,4 @@ NcObj rename to NcElement ?
     NetCDF datamodel description call these 'components'
     --but the word is not repeated ??
     https://www.unidata.ucar.edu/software/netcdf/docs/data_model.html
-
-elements may be nameless, (but not in containers)
-  - this will simplify API (Group()), but then also alter tests.
-reconsider the find/replace stuff + remove keywords
-  -- maybe resolve_internal_refs, return remainder + fix
-
-Lots of the group-level functions do not need to reside in the Group class.
-With suitable public manipulation functions, such as NcObj.setitem_raw (or
-whatever), all these structural operations could usefully be defined in an
-independent module.
-
 

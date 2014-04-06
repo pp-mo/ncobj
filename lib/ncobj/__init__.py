@@ -18,11 +18,16 @@ independent objects.  Any inconsistent references are automatically reconciled
 when writing the dataset to an actual file.
 This enables freely moving sections of data between files, with any
 referenced elements being re-created as required.
+
+TODO: ((following section: purpose + correctness doubtful))
 However, to preserve the hiearchical structure of referencing within groups,
 any referenced elements must must added and/or copied at the group level, as
 automatically generated reference elements are created at the top level.
 
 """
+from abc import ABCMeta, abstractmethod, abstractproperty
+
+
 import numpy as np
 
 
@@ -30,6 +35,19 @@ class NcObj(object):
     """
     An object representing a named information element in NetCDF.
     """
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def detached_copy(self):
+        """
+        Return an independent 'unlinked' copy of this element.
+        """
+        pass
+
+    @abstractmethod
+    def __eq__(self, other):
+        pass
+
     def __init__(self, name=None):
         """
         Args:
@@ -71,16 +89,6 @@ class NcObj(object):
         else:
             # detached object.
             self._name = name
-
-#    @abstract
-#    def detached_copy(self):
-#        """
-#        Return an independent 'unlinked' copy of this element.
-#        """
-
-#    @abstract
-#    def __eq__(self, other):
-#        pass
 
     def remove(self):
         """Remove from the parent container (if any)."""
@@ -213,6 +221,14 @@ class NcobjContainer(object):
     """
     A generic (abstract) container object for NetCDF elements.
     """
+    __metaclass__ = ABCMeta
+
+    @abstractproperty
+    # N.B. this should really also be *static*, but apparently can't have this
+    # in Python 2.  Ref: http://bugs.python.org/issue5867
+    def _of_type(self):
+        return None
+
     def __init__(self, contents=None, in_element=None):
         """
         Args:
@@ -241,9 +257,6 @@ class NcobjContainer(object):
         if contents:
             for element in contents:
                 self.__setitem__(element.name, element.detached_copy())
-
-#    @abstractproperty
-#    _of_type = None
 
     @property
     def in_element(self):
@@ -280,6 +293,7 @@ class NcobjContainer(object):
 
     def _setitem_ref_or_copy(self, name, element, detached_copy=False):
         # Assign as self[name]=element, taking a copy if specified.
+        # NOTE: *ALL* element-adding operations must come through here.
         self._check_element_type(element)
         self._check_element_name(name)
         if name in self.names():
@@ -319,6 +333,7 @@ class NcobjContainer(object):
         self._setitem_ref_or_copy(name, element, detached_copy=True)
 
     def pop(self, name):
+        # NOTE: *ALL* element-removing operations come through here.
         result = self._content.pop(name)
         result._container = None
         return result
@@ -382,134 +397,37 @@ class Group(NcObj):
         for group in self.groups:
             group._parent = self
 
-    #
-    # TODO: remove all the structural operations related to definitions
-    # resolution to a separate module, creating extra public API methods for
-    # containers and Groups as necessary (may already have what's needed?).
-    #
-
     # Publish which of our properties are simple definitions containers.
     # N.B. does *not* include 'groups'.
-    definitions_property_names = ('dimensions', 'variables', 'attributes')
+    @property
+    @staticmethod
+    def definitions_property_names():
+        return ('dimensions', 'variables', 'attributes')
 
     @property
     def parent_group(self):
         return self._parent
 
-    def treewalk_content(self, return_types=None):
-        if return_types is None or isinstance(self, return_types):
-            yield self
-        for container in (self.dimensions,
-                          self.variables,
-                          self.attributes):
-            for element in container:
-                if return_types is None or isinstance(element, return_types):
-                    yield element
-        for group in self.groups:
-            treewalk_content(group, return_types)
+    # NOTE: at present, parent links are correctly established in __init__ and
+    # detached_copy, but not automatically preserved by add+remove in
+    # NcGroupsContainer.  This probably needs addressing.
 
-    def all_variables(self):
-        return list(element for element in self.treewalk_content(Variable))
+    def detached_copy(self):
+        return Group(name=self.name,
+                     dimensions=self.dimensions,
+                     variables=self.variables,
+                     attributes=self.attributes,
+                     sub_groups=self.groups,
+                     parent_group=None)
 
-    def find_root_group(self):
-        group = self
-        while group.parent_group:
-            group = group.parent_group
-        return self
-
-    def _find_existing_definition(self, element, container_prop_name):
-        """
-        Search groups upward for a definition matching the given element.
-
-        Args:
-        * element (:class:`NcObj`):
-        element with required properties.  The definition must == this.
-        * container_prop_name (string):
-        name of the Group property to search for matching elements.
-
-        Returns:
-            An existing definition object, or None.
-
-        """
-        for own_el in getattr(self, container_prop_name):
-            if own_el == element:
-                # Found in self.
-                return element
-
-        # Not in self.  Look in parent, if any.
-        if self.parent_group:
-            return self.parent_group._find_existing_definition(
-                element, container_prop_name)
-
-        # We have no parent, so we are done (fail).
-        return None
-
-    def _find_or_create_definition(self, element, create_at_top=False):
-        """
-        Search the group and its parents for a definition matching the element.
-        If not found, create one, and return that instead.
-
-        Args:
-        * element (:class:`NcObj`):
-        The element to search for.
-
-        Kwargs:
-        * create_at_top (bool):
-        If set, create any new references at the top Group level.  Otherwise
-        (the default), create within the local Group.
-
-        .. note::
-
-            At present, only Dimension elements can be referenced.
-            TODO: add support for UserTypes.
-
-        """
-        if isinstance(element, Dimension):
-            container_propname = 'dimensions'
-        else:
-            raise ValueError('element {} is not of a valid reference '
-                             'type.'.format(element))
-
-        ref = self._find_existing_definition(element, container_propname)
-        if not ref:
-            # Not found: create one.
-            # Work out which group to create in
-            if create_at_top:
-                group = self.find_root_group()
-            else:
-                group = self
-            defs_container = getattr(group, container_propname)
-            # Install the new definition in this group, and return it.
-            defs_container.add(element)
-
-        return ref
-
-    def resolve_all_references(self, create_at_top=False):
-        """
-        Ensure that all references within the structure are links to actual
-        definitions somewhere in the group hieararchy.
-
-        If necessary, new definition elements are created within the groups.
-
-        Kwargs:
-        * create_at_top (bool):
-        If set, place newly-created definitions in the root group.
-        Otherwise (the default), create within the Group containing the
-        reference.
-
-        """
-        # Resolve references within contained variables (only place for now),
-        for var in self.all_variables():
-            # Fix up the variable's dimensions (the only thing for now).
-            # Snapshot dimensions, so we can change the container on the fly.
-            dims = list(var.dimensions)
-            # Replace all with proper definition references.
-            for dim in dims:
-                dim = self._find_or_create_definition(dim, create_at_top)
-                # Note: we must use a low-level assignment to insert 'dim'
-                # itself, rather than a detached copy of it.
-                var.dimensions.setitem_reference(dim.name, dim)
-
+    def __eq__(self, other):
+        # Don't see a purpose for group equality ?
+        return (other.name == self.name and
+                other.dimensions == self.dimensions and
+                other.variables == self.variables and
+                other.attributes == self.attributes and
+                other.groups == self.groups)
+        
     def __str__(self, indent=None):
         indent = indent or '  '
         strmsg = '<Group "{}":'.format(self.name)
@@ -526,20 +444,41 @@ class Group(NcObj):
 
 class NcAttributesContainer(NcobjContainer):
     """An attributes container."""
-    _of_type = Attribute
+    @property
+    def _of_type(self):
+        return Attribute
 
 
 class NcDimensionsContainer(NcobjContainer):
     """A dimensions container."""
-    _of_type = Dimension
+    @property
+    def _of_type(self):
+        return Dimension
 
 
 class NcVariablesContainer(NcobjContainer):
     """A variables container."""
-    _of_type = Variable
-    # TODO: wrap generic contents handling to allow specifying dims by name
+    @property
+    def _of_type(self):
+        return Variable
+        # TODO: wrap generic contents handling to allow specifying dims by name
 
 
 class NcGroupsContainer(NcobjContainer):
     """A subgroups container."""
-    _of_type = Group
+    @property
+    def _of_type(self):
+        return Group
+
+#    def _setitem_ref_or_copy(self, name, element, detached_copy=False):
+#        # Hook the underlying set-item call to ensure parent setting.
+#        # NOTE: *ALL* element-adding operations must come through here.
+#        NcobjContainer.__setitem__(self, name, element,
+#                                   detached_copy=detached_copy)
+#        self[name]._parent = self.in_element
+
+#    def pop(self, name):
+#        # Hook the underlying set-item call to ensure parent setting.
+#        # NOTE: *ALL* element-removing operations must come through here.
+#        NcobjContainer.pop(self, name)
+#        self[name]._parent = None
