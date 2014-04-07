@@ -69,3 +69,20 @@ NcObj rename to NcElement ?
     --but the word is not repeated ??
     https://www.unidata.ucar.edu/software/netcdf/docs/data_model.html
 
+Variables data access:
+    Should reflect direct indexing to the NetCDF4 underlying, allows getting
+        data from variable (see 'usecase_code_ideas.txt')
+
+Group structure tracking:
+    needs add/remove hooks to NcGroupsContainer (see latest ncobj.__init__)
+
+File i/o compatibility and "resolution":
+    on file output, in addition to references resolution
+        *also* need to check that variable data dimensionality matches the
+        numbers in the related dimension objects
+
+Usecase examples:
+    needs an example using Groups structures, e.g. copying whole Groups
+    demo copy-then-remove-bits, as opposed to copy-selected-bits ?
+    demo to point out automatic re-creation of dimensions etc when copying
+    demo to point out *problems* of automatic dimension creation/matching ??

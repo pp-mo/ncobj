@@ -8,9 +8,10 @@ arbitrary changes.  Intended scope similar to NCO commands.
 
 Present Status
 --------------
-2014-04-04:
- *  Still reworking core classes + writing tests.
- * Some unit tests written + working.
+2014-04-08:
+ * Still reworking core classes + writing tests.
+ * Basic unit tests written + working.
+ * Non-working usecase examples demonstrate intended coding forms + api.
  * No working file i/o yet.
 
 Further motivation and ideas :
@@ -21,6 +22,7 @@ Further motivation and ideas :
  * ultimately, this should include the ability to performed streamed operations on files larger than the memory
    * e.g. see https://github.com/SciTools/biggus
  * a straightforward read-modify-write will not be efficient for making simple
-changes to existing files (like the existing NetCDF4).  Should be able to
-compare content with an existing file and optimise, especially when variables
-data already exists in the file (visible from the deferred representation).
+changes to existing files (which the existing NetCDF4 does perfectly well).
+Should be able to compare content with an existing file and optimise,
+especially when the variables data already exists in the output file (as
+visible from variables' deferred data representation).
