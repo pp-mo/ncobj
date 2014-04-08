@@ -1,0 +1,25 @@
+Latest wants, as-at 20140408
+
+Implement basic real file i/o (nearly ready now)
+
+Support for user types, along the lines of exiting Dimensions
+    compound (aka structures)
+    vlen (aka ragged)
+
+Consistency for dimensions and lengths
+    Check functions to test dimensions against variable.data shapes
+    Variables referencing an unlimited dimension may have different actual
+        lengths, therefore need separate dimension definitions (somehow)
+        - this will be common when concatenating (otherwise) compatible inputs
+
+Probably need to introduce some COARDS/CF concepts
+    but maybe in separate 'utils' space ?
+
+Use Biggus
+    support streamed operations
+
+Consider any relevance of wider data-access models
+    OpenDAP
+    (unidata) Common Data Model  (not sure how wide acceptance/relevance?)
+
+Allow for efficient modifications in-existing-file.
