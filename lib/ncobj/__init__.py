@@ -111,16 +111,10 @@ def _prop_repr(obj, property_name):
 
 class Dimension(NcObj):
     """A NetCDF dimension object."""
-    def __init__(self, name, length=None):
+    def __init__(self, name, length=None, unlimited=False):
         NcObj.__init__(self, name)
-        self._length = length
-
-    @property
-    def length(self):
-        return self._length
-
-    def isunlimited(self):
-        return self.length is None
+        self.length = length
+        self.unlimited = unlimited
 
     def detached_copy(self):
         return Dimension(name=self.name, length=self.length)
@@ -170,7 +164,7 @@ class Attribute(NcObj):
 class Variable(NcObj):
     """A NetCDF variable object."""
     def __init__(self, name,
-                 dimensions=None, type=None, data=None, attributes=None):
+                 dimensions=None, dtype=None, data=None, attributes=None):
         NcObj.__init__(self, name)
         if dimensions is None:
             dimensions = []
@@ -178,21 +172,21 @@ class Variable(NcObj):
             dimensions = [dimensions]
         self.dimensions = dimensions
         self.attributes = NcAttributesContainer(attributes)
-        if hasattr(type, 'detached_copy'):
+        if hasattr(dtype, 'detached_copy'):
             # Needed for user-types.
-            type = type.detached_copy()
-        self.type = type
+            dtype = dtype.detached_copy()
+        self.dtype = dtype
         self.data = data
 
     def detached_copy(self):
-        return Variable(name=self.name, type=self.type, data=self.data,
+        return Variable(name=self.name, dtype=self.dtype, data=self.data,
                         dimensions=[dim.detached_copy()
                                     for dim in self.dimensions],
                         attributes=self.attributes.detached_contents_copy())
 
     def __eq__(self, other):
         return (self.name == other.name and
-                self.type == other.type and
+                self.dtype == other.dtype and
                 np.all(self.data == other.data) and
                 self.dimensions == other.dimensions and
                 self.attributes == other.attributes)
@@ -201,17 +195,17 @@ class Variable(NcObj):
         repstr = '<Variable "{}":'.format(self.name)
         repstr += ' dims=({})'.format(
             ', '.join(d.name for d in self.dimensions))
-        repstr += ', data={}'.format(self.data)
+#        repstr += ', data={}'.format(self.data)
         if self.attributes:
             repstr += ', attrs=({})'.format(
                 ', '.join(str(a) for a in self.attributes))
         return repstr + ')'
 
     def __repr__(self):
-        repstr = 'Variable({}, type={!r}'.format(self.name, self.type)
+        repstr = 'Variable({}, dtype={!r}'.format(self.name, self.dtype)
         if self.dimensions:
             repstr += ', dimensions={!r}'.format(self.dimensions)
-        repstr += ', data={}'.format(self.data)
+#        repstr += ', data={}'.format(self.data)
         repstr += ', {}'.format(_prop_repr(self, 'attributes'))
         repstr += ', {}'.format(_prop_repr(self, 'container'))
         return repstr + ')'
@@ -226,7 +220,7 @@ class NcobjContainer(object):
     @abstractproperty
     # N.B. this should really also be *static*, but apparently can't have this
     # in Python 2.  Ref: http://bugs.python.org/issue5867
-    def _of_type(self):
+    def element_type(self):
         return None
 
     def __init__(self, contents=None, in_element=None):
@@ -266,11 +260,11 @@ class NcobjContainer(object):
         return isinstance(self.in_element, Group)
 
     def _check_element_type(self, element):
-        if not isinstance(element, self._of_type):
+        if not isinstance(element, self.element_type):
             raise TypeError('Element named "{}" is not a {}, so cannot be '
                             'included in  a {} container.'.format(
                                 element.name,
-                                self._of_type.__name__,
+                                self.element_type.__name__,
                                 self.__class__.__name__))
 
     def _check_element_name(self, name):
@@ -380,7 +374,7 @@ class NcobjContainer(object):
     def __str__(self):
         contents = ', '.join('{}'.format(el) for el in self)
         return '<NcContainer({}): {}>'.format(
-            self._of_type.__name__, contents)
+            self.element_type.__name__, contents)
 
 
 class Group(NcObj):
@@ -427,7 +421,7 @@ class Group(NcObj):
                 other.variables == self.variables and
                 other.attributes == self.attributes and
                 other.groups == self.groups)
-        
+
     def __str__(self, indent=None):
         indent = indent or '  '
         strmsg = '<Group "{}":'.format(self.name)
@@ -436,7 +430,7 @@ class Group(NcObj):
         if self.attributes:
             strmsg += '\n{}attrs=({})'.format(indent, self.attributes)
         if self.groups:
-            strmsg += ''.join('\n' + group.__str__(indent+'  ')
+            strmsg += ''.join('\n' + group.__str__(indent + '  ')
                               for group in self.groups)
         strmsg += '\n>'
         return strmsg
@@ -445,21 +439,21 @@ class Group(NcObj):
 class NcAttributesContainer(NcobjContainer):
     """An attributes container."""
     @property
-    def _of_type(self):
+    def element_type(self):
         return Attribute
 
 
 class NcDimensionsContainer(NcobjContainer):
     """A dimensions container."""
     @property
-    def _of_type(self):
+    def element_type(self):
         return Dimension
 
 
 class NcVariablesContainer(NcobjContainer):
     """A variables container."""
     @property
-    def _of_type(self):
+    def element_type(self):
         return Variable
         # TODO: wrap generic contents handling to allow specifying dims by name
 
@@ -467,7 +461,7 @@ class NcVariablesContainer(NcobjContainer):
 class NcGroupsContainer(NcobjContainer):
     """A subgroups container."""
     @property
-    def _of_type(self):
+    def element_type(self):
         return Group
 
 #    def _setitem_ref_or_copy(self, name, element, detached_copy=False):

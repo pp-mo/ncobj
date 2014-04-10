@@ -90,3 +90,10 @@ Usecase examples:
 
 Keep the low-level I/O separate from the structural 'consistency' concepts
     means splitting nc_dataset into two
+
+
+BUGS + CHANGES
+==============
+container.pop should have default arg
+container._of_type should be public
+

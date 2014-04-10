@@ -2,92 +2,79 @@
 Module for converting ncobj data to and from NetCDF Datasets.
 
 """
-
 import netCDF4
+import ncobj as nco
+import ncobj.grouping as ncg
 
 
-import ncobj
+def _make_attribute(ds, attr_name):
+    return nco.Attribute(attr_name, value=ds.getncattr(attr_name))
 
 
-#
-# Odd salvage
-#
-if 0:
-    def group_path_in(self, in_group):
-        """
-        Construct a relative group-path to this object.
-
-        Args:
-        * in_group (:class:``):
-        an Group object to search for this item within.
-
-        """
-        # Find all super-groups of the requested containing in_group.
-        supergroups = [in_group]
-        group = in_group.group
-        while group != None:
-            supergroups.append(group)
-            group = group.group
-
-        # Scan our parents looking for a connection into the passed in_group.
-        group_path = []
-        group = self.group
-        while group != None and group not in supergroups:
-            group_path = [group.name] + group_path
-            group = group.group
-        if group is None:
-            # No connection found with the requested in_group.
-            return None
-        else:
-            # Found a connection.  Add '..' for groups "above" the requested.
-            supergroups_iter = supergroups.iter()
-            while supergroups_iter.next() != group:
-                group_path = ['..'] + group_path
-            return group_path
+def _make_dimension(ds, dim_name):
+    dim = ds.dimensions[dim_name]
+    return nco.Dimension(name=dim_name,
+                         length=len(dim),
+                         unlimited=dim.isunlimited())
 
 
-# Main definition.
-class NcFile(ncobj.Group):
-    def __init__(self, input_file=None, input_format=None):
-        ncobj.Group.__init__(self)
-        if input_file:
-            if isinstance(input_file, netCDF4.Dataset):
-                ds = input_file
-            elif input_format:
-                ds = netCDF4.Dataset(input_file, format=input_format)
-            else:
-                ds = netCDF4.Dataset(input_file)
-            self.read(ds)
+def _make_variable(ds, var_name, group):
+    var = ds.variables[var_name]
+    dims = []
+    for dim_name in var.dimensions:
+        dim = ncg.find_named_definition(group, dim_name, nco.Dimension)
+        if dim is None:
+            # TODO: this error could use a group-path-string adding.
+            raise ValueError('Dimension "{}" of variable "{}" not found in '
+                             'input file.'.format(dim_name, var_name))
+        dims.append(dim)
 
-    def write(self, writable):
-        pass
+    attrs = [nco.Attribute(attr_name, value=var.getncattr(attr_name))
+             for attr_name in var.ncattrs()]
 
-    def read(self, readable):
-        # no groups yet, this is just ideas ...
-        for attname in ds.ncattrs():
-            value = ds.getncattr(attname)
-            attribute = ncobj.Attribute(attname, value=value)
-            ds.attributes.add(dimension)
+    new_var = nco.Variable(name=var_name,
+                           attributes=attrs,
+                           data=var,
+                           dtype=None)  # N.B. for now, types are not working..
+    for dim in dims:
+        new_var.dimensions.append(dim)
 
-        for (name, dim) in ds.dimensions.iteritems:
-            length = None if dim.isunlimited() else len(dim)
-            dimension = ncobj.Dimension(name, length=length)
-            ds.dimensions.add(dimension)
+    return new_var
 
-        for (name, ds_var) in ds.variables.iteritems:
-            dimensions = []
-            for dim_name in ds_var.dimensions:
-                ds_dim = ds.dimensions[dim_name]
-                length = None if ds_dim.isunlimited() else len(ds_dim)
-                dimensions.append(ncobj.Dimension(dim_name, length))
-            attributes = []
-            for attr_name in ds_var.ncattrs():
-                value = ds_var.getncattr(attr_name)
-                attributes.append(ncobj.Attribute(attr_name, value))
-            variable = ncobj.Variable(name, group=self,
-                                  dimensions=dimensions,
-                                  dtype=ds_var.datatype,  # TODO user-types?
-                                  data=ds_var,  # NOTE: so deferred!
-                                  attributes=attributes)
-            ds.variables.add(variable)
 
+def _make_group(name, ds):
+    # Read Group components in the right order, so they cross-reference.
+
+    group = nco.Group(name)
+
+    # Read attributes.
+    group.attributes.add_allof([_make_attribute(ds, name)
+                                for name in ds.ncattrs()])
+
+    # Read dimensions.
+    group.dimensions.add_allof([_make_dimension(ds, name)
+                                for name in ds.dimensions])
+
+    # Read variables.
+    for name in ds.variables:
+        var = _make_variable(ds, name, group)
+        group.variables.setitem_reference(var.name, var)
+
+    # Read sub-groups.
+    group.groups.add_allof([_make_group(name, ds.groups[name])
+                            for name in ds.groups])
+
+    return group
+
+
+def read(file_source):
+    # Read a dataset from a netCDF file.
+    if isinstance(file_source, netCDF4.Dataset):
+        # If a Dataset, use as-is.
+        group = _make_group('', file_source)
+    else:
+        # Convert input to a NetCDF4 dataset + read that.
+        with netCDF4.Dataset(file_source, 'r') as ds:
+            group = _make_group('', ds)
+
+    return group

@@ -110,23 +110,26 @@ class GenericNcObjTestMixin(object):
 class Test_Dimension(tests.TestCase, GenericNcObjTestMixin):
     def setUp(self):
         self.test_element = ncobj.Dimension(name='test', length=5)
-        self.test_el_unlimited = ncobj.Dimension(name='test')
+#        self.test_el_unlimited = ncobj.Dimension(name='test', unlimited=True)
 
-    def test_length__unlimited(self):
-        self.assertIsNone(self.test_el_unlimited.length)
-
-    def test_length__finite(self):
-        self.assertEqual(self.test_element.length, 5)
-
-    def test_length__unwriteable(self):
-        with self.assertRaises(AttributeError):
-            self.test_element.length = 2
-
-    def test_isunlimited__unlimited(self):
-        self.assertTrue(self.test_el_unlimited.isunlimited())
-
-    def test_isunlimited__finite(self):
-        self.assertFalse(self.test_element.isunlimited())
+#    def test_length__unlimited(self):
+#        self.assertIsNone(self.test_el_unlimited.length)
+#
+#    def test_length__finite(self):
+#        self.assertEqual(self.test_element.length, 5)
+#
+#    def test_length__writeable(self):
+#        self.test_element.length = 2
+#        self.assertEqual(self.test_element.length, 2)
+#
+#    def test_isunlimited__unlimited(self):
+#        self.assertTrue(self.test_el_unlimited.unlimited)
+#
+#    def test_isunlimited__finite(self):
+#        self.assertFalse(self.test_element.unlimited)
+#
+#    # TODO: unlimited + length now decoupled + independent
+#    # needs more tests ?
 
 
 class Test_Attribute(tests.TestCase, GenericNcObjTestMixin):
@@ -160,7 +163,7 @@ class Test_NcobjContainer(tests.TestCase):
 
         class TestContainer(ncobj.NcobjContainer):
             @property
-            def _of_type(self):
+            def element_type(self):
                 return TestNcObj
 
 # This way tests a specific type + its container.
@@ -345,7 +348,7 @@ class Test_Group(tests.TestCase, GenericNcObjTestMixin):
         child = ncobj.Group('child_name', parent_group=parent)
         self.assertEqual(child.parent_group, parent)
 
-if 0:
+if 1:
     class Test__api(tests.TestCase):    
         def setUp(self):
     #        self.input_dataset = object()
@@ -361,13 +364,13 @@ if 0:
             self.nco.dimensions.add(dim_y)
             var1 = ncobj.Variable('var_A',
                                   dimensions=(dim_y, dim_x),
-                                  type=float,
+                                  dtype=float,
                                   data=[[1, 2, 3], [4, 5, 6]])
             var1.attributes.add(ncobj.Attribute('var_att_a', value='this'))
             self.nco.variables.add(var1)
             var2 = ncobj.Variable('var_B',
                                   dimensions=(),
-                                  type=float,
+                                  dtype=float,
                                   data=[])
             self.nco.variables.add(var2)
             print
