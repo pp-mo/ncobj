@@ -83,17 +83,62 @@ File i/o compatibility and "resolution":
     on file output, in addition to references resolution
         *also* need to check that variable data dimensionality matches the
         numbers in the related dimension objects
+    another consistency issue :
+        """
+        Variables, groups, and types share a namespace. Within the same group, variables,
+        groups, and types must have unique names. (That is, a type and variable may not have the
+        same name within the same group, and similarly for sub-groups of that group.)
+        """
+        Needs another consistency check in resolve/complete/finalise.
 
 Usecase examples:
     demo to point out automatic re-creation of dimensions etc when copying
     demo to point out *problems* of automatic dimension creation/matching ??
 
-Keep the low-level I/O separate from the structural 'consistency' concepts
-    means splitting nc_dataset into two
-
 
 BUGS + CHANGES
 ==============
-container.pop should have default arg
-container._of_type should be public
+* container.pop should have default arg
+    * once again, reconsider the access methods
+
+* Variable.dimensions can't be accessed by name, only by index
+    * that's sort-of ok, as it can occur more than once ?
+    * in principle, at present, could even be two different dims of same name
+    (if not finalised)
+        * (see "repeated dim" below)
+    * provide a method, or consider implementing a specialist container type
+
+* ==!!!== Variable.dimensions.append does not enforce a detached_copy()
+    * consider implementing a specialist container type instead of the list ?
+
+* review str() methods -- could usefully do more like ncdump -ch
+    * probably need a short form in str(), then separate call e.g. dump(), pp()
+
+* nc_dataset.read should choke on user datatypes.
+* nc_dataset.read should use setitem_reference throughout (not copying)
+
+* consider whether a variable's list of dims can have a repeated dim ???
+    * CHECKED ++
+* Check that dim-names scope holes are possible ...
+    * CHECKED ++
+((NOTE: these should become tests))
+
+New resolution approach:
+    Very simple, use it on sub-groups to resolve problems.
+        -- explain this in docstring ??
+    def grouping.complete(group):
+        reprogram dim sizes from variable shapes + fail on collisions
+        resolve internal links (dims)
+        resolve cross-type name collisions.
+
+CONCEPTS NAMING
+    complete / finalise / resolve
+    ncg.complete(group)
+    def localise(group):
+        for subgroup in group.groups:
+            localise(subgroup)
+        complete(group)
+
+MOTIVATION + USECASE IDEAS
+    see - http://marqh.github.io/ncContainers/build/html/index.html
 
