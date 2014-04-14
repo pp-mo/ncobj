@@ -14,8 +14,10 @@ def walk_group_objects(group, of_types=None):
         for element in container:
             if of_types is None or isinstance(element, of_types):
                 yield element
+
     for subgroup in group.groups:
-        walk_group_objects(subgroup, of_types)
+        for obj in walk_group_objects(subgroup, of_types):
+            yield obj
 
 
 def all_variables(group):
@@ -172,7 +174,7 @@ def find_named_definition(group, name, element_type):
 def group_path(ncobj):
     path = ncobj.name
     if ncobj.container and isinstance(ncobj.container.in_element, Group):
-        path = group_path(ncobj.container) + '/' + path
+        path = group_path(ncobj.container.in_element) + '/' + path
     return ncobj.name
 
 

@@ -476,3 +476,15 @@ class NcGroupsContainer(NcobjContainer):
 #        # NOTE: *ALL* element-removing operations must come through here.
 #        NcobjContainer.pop(self, name)
 #        self[name]._parent = None
+
+    def _setitem_ref_or_copy(self, name, element, detached_copy=False):
+        NcobjContainer._setitem_ref_or_copy(self, name, element,
+                                            detached_copy=detached_copy)
+        in_group = self.in_element
+        if isinstance(in_group, Group):
+            self[name]._parent = in_group
+
+    def pop(self, name):
+        NcobjContainer.pop(self, name)
+        self[name]._parent = None
+
