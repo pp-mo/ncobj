@@ -105,7 +105,7 @@ def _prop_repr(obj, property_name):
     if hasattr(obj, property_name):
         val = getattr(obj, property_name)
         if val:
-            result = '{}={!r}'.format(property_name, val)
+            result = ', {}={!r}'.format(property_name, val)
     return result
 
 
@@ -117,18 +117,23 @@ class Dimension(NcObj):
         self.unlimited = unlimited
 
     def detached_copy(self):
-        return Dimension(name=self.name, length=self.length)
+        return Dimension(name=self.name, length=self.length,
+                         unlimited=self.unlimited)
 
     def __str__(self):
         return '<Dimension "{}" = {}>'.format(self.name, self.length)
 
     def __repr__(self):
-        return 'Dimension({}, length={})'.format(
+        return 'Dimension({}, length={}{}{})'.format(
             self.name, self.length,
-            ', {}'.format(_prop_repr(self, 'container')))
+            _prop_repr(self, 'container'),
+            _prop_repr(self, 'unlimited'))
 
     def __eq__(self, other):
-        return other.name == self.name and other.length == self.length
+        return (isinstance(other, Dimension) and
+                other.name == self.name and
+                other.length == self.length and
+                other.unlimited == self.unlimited)
 
 
 class Attribute(NcObj):
@@ -150,15 +155,16 @@ class Attribute(NcObj):
 
     def __eq__(self, other):
         # NOTE: attributes do not have a type.  Is this correct ???
-        return other.name == self.name and other.value == self.value
+        return (isinstance(other, Attribute) and
+                other.name == self.name and other.value == self.value)
 
     def __str__(self):
         return '<Attribute "{}" = {}>'.format(self.name, self.value)
 
     def __repr__(self):
-        return 'Attribute({}, value={}{}{})'.format(
+        return 'Attribute({}, value={}{})'.format(
             self.name, self.value,
-            ', {}'.format(_prop_repr(self, 'container')))
+            _prop_repr(self, 'container'))
 
 
 class Variable(NcObj):
@@ -170,7 +176,7 @@ class Variable(NcObj):
             dimensions = []
         elif isinstance(dimensions, Dimension):
             dimensions = [dimensions]
-        self.dimensions = dimensions
+        self.dimensions = list(dimensions)
         self.attributes = NcAttributesContainer(attributes)
         if hasattr(dtype, 'detached_copy'):
             # Needed for user-types.
@@ -185,7 +191,8 @@ class Variable(NcObj):
                         attributes=self.attributes.detached_contents_copy())
 
     def __eq__(self, other):
-        return (self.name == other.name and
+        return (isinstance(other, Variable) and
+                self.name == other.name and
                 self.dtype == other.dtype and
                 np.all(self.data == other.data) and
                 self.dimensions == other.dimensions and
@@ -206,8 +213,8 @@ class Variable(NcObj):
         if self.dimensions:
             repstr += ', dimensions={!r}'.format(self.dimensions)
 #        repstr += ', data={}'.format(self.data)
-        repstr += ', {}'.format(_prop_repr(self, 'attributes'))
-        repstr += ', {}'.format(_prop_repr(self, 'container'))
+        repstr += _prop_repr(self, 'attributes')
+        repstr += _prop_repr(self, 'container')
         return repstr + ')'
 
 
@@ -364,6 +371,7 @@ class NcobjContainer(object):
 
     def __eq__(self, other):
         return (isinstance(other, NcobjContainer) and
+                other.element_type == self.element_type and
                 self._content == other._content)
 
     def __ne__(self, other):
@@ -418,7 +426,8 @@ class Group(NcObj):
 
     def __eq__(self, other):
         # Don't see a purpose for group equality ?
-        return (other.name == self.name and
+        return (isinstance(other, Group) and
+                other.name == self.name and
                 other.dimensions == self.dimensions and
                 other.variables == self.variables and
                 other.attributes == self.attributes and

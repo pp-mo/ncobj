@@ -33,12 +33,6 @@ def all_groups(group):
     return list(walk_group_objects(group, Group))
 
 
-def find_group_root(group):
-    while group.parent_group:
-        group = group.parent_group
-    return group
-
-
 def group_path(ncobj):
     path = ncobj.name
     if ncobj.container and isinstance(ncobj.container.in_element, Group):
