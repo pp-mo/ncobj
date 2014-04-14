@@ -155,3 +155,5 @@ NOW TO FIX...
             _find_definition
             find_named_definition
             (later stuff: name clashes, dims resolution, "complete")
+            see if "check_dims_usage_consistent" should be public
+                -- can '_<add/remove>_dims_usage_tags' usage can be made safe?
