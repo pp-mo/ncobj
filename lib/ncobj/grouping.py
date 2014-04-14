@@ -19,21 +19,53 @@ def walk_group_objects(group, of_types=None):
 
 
 def all_variables(group):
-    return list(walk_group_objects(group, nco.Variable))
+    return list(walk_group_objects(group, Variable))
 
 
 def all_dimensions(group):
-    return list(walk_group_objects(group, nco.Dimensions))
+    return list(walk_group_objects(group, Dimension))
 
 
 def all_groups(group):
-    return list(walk_group_objects(group, nco.Group))
+    return list(walk_group_objects(group, Group))
 
 
 def find_group_root(group):
     while group.parent_group:
         group = group.parent_group
     return group
+
+
+def _find_definition(group, name, container_prop_name):
+    """
+    Search groups upward for a definition by name and container property name.
+
+    Args:
+    * group (:class:`Group`):
+        The group to start searching at.
+
+    * name (:class:`NcObj`):
+        The name the element should have.
+
+    * container_prop_name:
+        The Group container property to look in.
+
+    Returns:
+        An existing definition object, or None.
+
+    """
+    for element in getattr(group, container_prop_name):
+        if element.name == name:
+            # Found in given group.
+            return element
+
+    # Not in this group:  Look in the parent (if any).
+    if group.parent_group:
+        return _find_definition(group.parent_group, name,
+                                container_prop_name)
+
+    # Group has no parent, so we are done (fail).
+    return None
 
 
 def find_named_definition(group, name, element_type):
@@ -65,81 +97,81 @@ def find_named_definition(group, name, element_type):
     return _find_definition(group, name, container_prop_name)
 
 
-def _find_or_create_definition(group, element, create_missing_in_group=None):
-    """
-    Search the group and its parents for a definition matching the element.
-    If not found, create one, and return that instead.
+#def _find_or_create_definition(group, element, create_missing_in_group=None):
+#    """
+#    Search the group and its parents for a definition matching the element.
+#    If not found, create one, and return that instead.
+#
+#    Args:
+#    * element (:class:`NcObj`):
+#        The element to search for.
+#
+#    Kwargs:
+#    * create_missing_in_group (:class:`Group`):
+#        If set, and no existing definition is found, create the new definition
+#        in this Group.  Otherwise (the default), put it in the starting group.
+#
+#    .. note::
+#
+#        At present, only Dimension elements can be referenced.
+#        TODO: add support for UserTypes.
+#
+#    """
+#    # Work out which Group property to search for this type of element.
+#    if isinstance(element, Dimension):
+#        container_propname = 'dimensions'
+#    else:
+#        raise ValueError('element {} is not of a valid reference '
+#                         'type.'.format(element))
+#
+#    # Work out where to put any newly created definitions.
+#    if create_missing_in_group is None:
+#        create_missing_in_group = group
+#
+#    # See if there is an existing definition in the group structure.
+#    ref = find_element_definition(group, element, container_propname)
+#    if not ref:
+#        # Definition not found: create one.
+#        defs_container = getattr(create_missing_in_group, container_propname)
+#        # Install the new definition in this group, and return it.
+#        defs_container.add(element)
+#        ref = defs_container.get(element.name)
+#
+#    return ref
 
-    Args:
-    * element (:class:`NcObj`):
-        The element to search for.
 
-    Kwargs:
-    * create_missing_in_group (:class:`Group`):
-        If set, and no existing definition is found, create the new definition
-        in this Group.  Otherwise (the default), put it in the starting group.
-
-    .. note::
-
-        At present, only Dimension elements can be referenced.
-        TODO: add support for UserTypes.
-
-    """
-    # Work out which Group property to search for this type of element.
-    if isinstance(element, Dimension):
-        container_propname = 'dimensions'
-    else:
-        raise ValueError('element {} is not of a valid reference '
-                         'type.'.format(element))
-
-    # Work out where to put any newly created definitions.
-    if create_missing_in_group is None:
-        create_missing_in_group = group
-
-    # See if there is an existing definition in the group structure.
-    ref = find_element_definition(group, element, container_propname)
-    if not ref:
-        # Definition not found: create one.
-        defs_container = getattr(create_missing_in_group, container_propname)
-        # Install the new definition in this group, and return it.
-        defs_container.add(element)
-        ref = defs_container.get(element.name)
-
-    return ref
-
-
-def resolve_all_references(group, create_missing_in_group=None):
-    """
-    Ensure that all references within the structure are links to actual
-    definitions somewhere in the group hieararchy.
-
-    If necessary, new definition elements are created within the groups.
-
-    Kwargs:
-    * create_missing_in_group (:class:`Group`):
-        If set, any missing definitions are created in this group.  Otherwise
-        (the default), they are put in the groups of their parent variables.
-
-    """
-    # Resolve references within contained variables (only place for now),
-    for var in walk_group_objects(group, Variable):
-        # Fix up the variable's dimensions (the only thing for now).
-        # Snapshot dimensions, so we can change the container on the fly.
-        var_group = var.container.in_element
-        assert isinstance(var_group, Group)
-        dims = list(var.dimensions)
-        # Replace all with proper definition references.
-        for dim in dims:
-            dim_definition = _find_or_create_definition(
-                var_group, dim, create_missing_in_group)
-            # Note: we must use a low-level assignment to insert 'dim'
-            # itself, rather than a detached copy of it.
-            var.dimensions.setitem_reference(dim.name, dim_definition)
+#def resolve_all_references(group, create_missing_in_group=None):
+#    """
+#    Ensure that all references within the structure are links to actual
+#    definitions somewhere in the group hieararchy.
+#
+#    If necessary, new definition elements are created within the groups.
+#
+#    Kwargs:
+#    * create_missing_in_group (:class:`Group`):
+#        If set, any missing definitions are created in this group.  Otherwise
+#        (the default), they are put in the groups of their parent variables.
+#
+#    """
+#    # Resolve references within contained variables (only place for now),
+#    for var in walk_group_objects(group, Variable):
+#        # Fix up the variable's dimensions (the only thing for now).
+#        # Snapshot dimensions, so we can change the container on the fly.
+#        var_group = var.container.in_element
+#        assert isinstance(var_group, Group)
+#        dims = list(var.dimensions)
+#        # Replace all with proper definition references.
+#        for dim in dims:
+#            dim_definition = _find_or_create_definition(
+#                var_group, dim, create_missing_in_group)
+#            # Note: we must use a low-level assignment to insert 'dim'
+#            # itself, rather than a detached copy of it.
+#            var.dimensions.setitem_reference(dim.name, dim_definition)
 
 
 def group_path(ncobj):
     path = ncobj.name
-    if ncobj.container and isinstance(ncobj.container.in_element, nco.Group):
+    if ncobj.container and isinstance(ncobj.container.in_element, Group):
         path = group_path(ncobj.container) + '/' + path
     return ncobj.name
 
@@ -165,10 +197,10 @@ def check_group_name_clashes(group):
                 raise NameConflictError('group "{}" contains both a {} and a '
                                         '{} named {}.'.format(
                                             group_path(grp), type1, type2,
-                                            badname)
+                                            badname))
 
-    for grp in all_groups(group):
-        check_one_group(grp)
+        for grp in all_groups(group):
+            check_one_group(grp)
 
 
 def complete(group):
@@ -184,7 +216,7 @@ def complete(group):
         #  THEN separately check + calculate everything ?
         #  ALSO means check + calc _unlim separately (_really_ not hard).
         #
-    for dim in all_dimensions(groups)
+    for dim in all_dimensions(group):
         dim._vars, dim._len, dim._unlim = [], None, False
 
     # Find or create definitions for the dimensions required by all variables.
@@ -192,7 +224,7 @@ def complete(group):
     for var in all_variables(group):
         for dim in var.dimensions:
             # Locate existing dimension in structure, if any.
-            dim_def = find_named_definition(group, dim.name, nco.Dimension)
+            dim_def = find_named_definition(group, dim.name, Dimension)
             if dim_def is None:
                 # Create a new top-level dimension definition.
                 group.dimensions.add(dim)
@@ -222,7 +254,7 @@ def complete(group):
                 dim._len, dim._unlim = dim1.length, need_unlimited
 
         # Check for any name conflicts.
-        check_name_clashes(group)
+        check_group_name_clashes(group)
     except Exception as error:
         # Back out changes, to leave passed argument as it was.
         group.dimensions.remove_allof(new_created_dims)
@@ -243,6 +275,6 @@ def complete(group):
     # Run through all the variables, fixing pointers to the definitions.
     for var in all_variables(group):
         for i_dim, dim in enumerate(var.dimensions):
-            dim_def = find_named_definition(group, dim.name, nco.Dimension)
+            dim_def = find_named_definition(group, dim.name, Dimension)
             assert dim_def is not None
             var.dimensions[i_dim] = dim_def
