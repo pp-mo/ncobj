@@ -294,6 +294,10 @@ class Test_NcobjContainer(tests.TestCase):
         self.assertNotIn(con_a, self.con_nonempty)
         self.assertIsNone(con_a.container)
 
+    def test_pop__default(self):
+        odd_value = mock.sentinel.unique_val
+        self.assertIs(self.con.pop('A', odd_value), odd_value)
+
     def test__delitem__(self):
         with self.assertRaises(KeyError):
             del self.con['A']

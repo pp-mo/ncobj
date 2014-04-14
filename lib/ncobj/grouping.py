@@ -131,83 +131,6 @@ def check_group_name_clashes(group):
                                             badname))
 
 
-#def complete_OLD(group):
-#    # Link all variable dimensions to definitions.
-#    # Resolve all dimensions to match variable sizes.
-#    # Check cross-class names.
-#    # NOTE: make dimensions unlimited when required, and also allow these to be
-#    # used where the variable information implies a fixed dimension.
-#    
-#    # Assign temporary information to all dimensions, for recording usage.
-#        #
-#        # NOTE: may be better to add/remove with separate util methods.
-#        #  THEN separately check + calculate everything ?
-#        #  ALSO means check + calc _unlim separately (_really_ not hard).
-#        #
-#    for dim in all_dimensions(group):
-#        dim._vars, dim._len, dim._unlim = [], None, False
-#
-#    # Find or create definitions for the dimensions required by all variables.
-#    new_created_dims = []
-#    for var in all_variables(group):
-#        for dim in var.dimensions:
-#            # Locate existing dimension in structure, if any.
-#            dim_def = find_named_definition(group, dim.name, Dimension)
-#            if dim_def is None:
-#                # Create a new top-level dimension definition.
-#                group.dimensions.add(dim)
-#                dim_def = group.dimensions[dim.name]
-#                dim_def._vars, dim_def._len, dim_def._unlim = [], None, False
-#                # Keep a list of these, so we can remove again on error.
-#                new_created_dims.append(dim_def)
-#            # Record this variable as using this dimension
-#            dim_def._vars.append((var, dim))
-#
-#    # Do consistency checks (backing out all changes on failure).
-#    try:
-#        # Check that the requirements for all dimensions are consistent.
-#        for dim in all_dimensions(group):
-#            if dim._vars:
-#                var1, dim1 = dim._vars[0]
-#                need_unlimited = dim1.unlimited
-#                for (varx, dimx) in dim._vars[1:]:
-#                    need_unlimited |= dimx.unlimited
-#                    if dimx.length != dim1.length:
-#                        # 
-#                        raise DimensionConflictError(
-#                            'Variable "{}" requires dimension "{}={}", but '
-#                            'variable "{}" requires "{}={}"'.format(
-#                                group_path(var1), dim1.name, dim1.length,
-#                                group_path(varx), dimx.name, dimx.length))
-#                dim._len, dim._unlim = dim1.length, need_unlimited
-#
-#        # Check for any name conflicts.
-#        check_group_name_clashes(group)
-#    except Exception as error:
-#        # Back out changes, to leave passed argument as it was.
-#        group.dimensions.remove_allof(new_created_dims)
-#        for dim in all_dimensions(group):
-#            del dim._vars, dim._len, dim._unlim
-#        raise error
-#
-#    # Finally, make the actual structural changes.
-#
-#    # Run through all dimension definitions, fixing the required properties.
-#    for dim in all_dimensions(group):
-#        if dim._vars:
-#            # NOTE: do not fiddle with any unused dimensions here.
-#            # Can easily prune these if wanted.
-#            dim.length, dim.unlimited = dim._length_unlim
-#        del dim._vars, dim._len, dim._unlim
-#
-#    # Run through all the variables, fixing pointers to the definitions.
-#    for var in all_variables(group):
-#        for i_dim, dim in enumerate(var.dimensions):
-#            dim_def = find_named_definition(group, dim.name, Dimension)
-#            assert dim_def is not None
-#            var.dimensions[i_dim] = dim_def
-
-
 def add_missing_dims(group):
     # Find or create definitions for all dimensions used by all variables.
     new_created_dims = []
@@ -227,37 +150,48 @@ def add_missing_dims(group):
 _DimVarData = namedtuple('DimVarsData', 'var dim')
 
 
-def _add_dims_usage_tags(group):
-    # Add blank data to every dimension definition.
-    for dim in all_dimensions(group):
-        dim._varsdata = []
-    # Scan all variables and record usage against dimensions referenced.
-    for var in all_variables(group):
-        for dim in var.dimensions:
-            # Locate existing dimension in structure, if any.
-            dim_def = find_named_definition(group, dim.name, Dimension)
-            assert dim_def is not None
-            # Add the variable with its dimension usage.
-            dim_def._varsdata.append(_DimVarData(var, dim))
+def _add_dims_varsdata(group):
+    if not hasattr(group, '_with_varsdata'):
+        group._with_varsdata = True
+        # Add blank data to every dimension definition.
+        for dim in all_dimensions(group):
+            dim._varsdata = []
+        # Scan all variables and record usage against dimensions referenced.
+        for var in all_variables(group):
+            for dim in var.dimensions:
+                # Locate existing dimension in structure, if any.
+                dim_def = find_named_definition(group, dim.name, Dimension)
+                assert dim_def is not None
+                # Add the variable with its dimension usage.
+                dim_def._varsdata.append(_DimVarData(var, dim))
 
 
-def _remove_dims_usage_tags(group):
-    for dim in all_dimensions(group):
-        del dim._varsdata
+def _remove_dims_varsdata(group):
+    if hasattr(group, '_with_varsdata'):
+        for dim in all_dimensions(group):
+            del dim._varsdata
+        del group._with_varsdata
 
 
 def check_dims_usage_consistent(group):
     # Check that the requirements for all dimensions are consistent.
-    for dim in all_dimensions(group):
-        if len(dim._varsdata) > 1:
-            var1, dim1 = dim._varsdata[0]
-            for (varx, dimx) in dim._varsdata[1:]:
-                if dimx.length != dim1.length:
-                    raise DimensionConflictError(
-                        'Variable "{}" requires dimension "{}={}", but '
-                        'variable "{}" requires "{}={}"'.format(
-                            group_path(var1), dim1.name, dim1.length,
-                            group_path(varx), dimx.name, dimx.length))
+    has_existing_varsdata = hasattr(group, '_has_varsdata')
+    try:
+        if not has_existing_varsdata:
+            _add_dims_varsdata(group)
+        for dim in all_dimensions(group):
+            if len(dim._varsdata) > 1:
+                var1, dim1 = dim._varsdata[0]
+                for (varx, dimx) in dim._varsdata[1:]:
+                    if dimx.length != dim1.length:
+                        raise DimensionConflictError(
+                            'Variable "{}" requires dimension "{}={}", but '
+                            'variable "{}" requires "{}={}"'.format(
+                                group_path(var1), dim1.name, dim1.length,
+                                group_path(varx), dimx.name, dimx.length))
+    finally:
+        if not has_existing_varsdata:
+            _remove_dims_varsdata(group)
 
 
 def complete(group):
@@ -267,12 +201,13 @@ def complete(group):
     # NOTE: make dimensions unlimited when required, and also allow these to be
     # used where the variable information implies a fixed dimension.
     new_dim_defs = add_missing_dims(group)
-    _add_dims_usage_tags(group)
+    _add_dims_varsdata(group)
     try:
         check_dims_usage_consistent(group)
         check_group_name_clashes(group)
     except Exception:
-        _remove_dims_usage_tags(group)
+        # Restore original argument before sending caller an exception.
+        _remove_dims_varsdata(group)
         group.dimensions.remove_allof(new_dim_defs)
         raise
 
@@ -292,5 +227,5 @@ def complete(group):
                           for dim in var.dimensions]
 
     # Tidy up after.
-    _remove_dims_usage_tags(group)
+    _remove_dims_varsdata(group)
 
