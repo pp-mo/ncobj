@@ -142,3 +142,16 @@ CONCEPTS NAMING
 MOTIVATION + USECASE IDEAS
     see - http://marqh.github.io/ncContainers/build/html/index.html
 
+
+NOW TO FIX...
+    review usage of pop/remove ?
+    Tests for
+        GroupContainer got the setitem/pop upgrades
+        pop default arg (?maybe?)
+        practically everything in ncobj.grouping
+            walk_group_objects
+            all_variables/dimensions/groups
+            group_path [[NEEDS MOVING]]
+            _find_definition
+            find_named_definition
+            (later stuff: name clashes, dims resolution, "complete")

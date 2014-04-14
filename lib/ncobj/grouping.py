@@ -175,7 +175,7 @@ def group_path(ncobj):
     path = ncobj.name
     if ncobj.container and isinstance(ncobj.container.in_element, Group):
         path = group_path(ncobj.container.in_element) + '/' + path
-    return ncobj.name
+    return path
 
 
 class DimensionConflictError(Exception):

@@ -424,7 +424,7 @@ if 0:
     #                units_att.value == units_to
     #        nco.write(sel.out_file)
 
-if 0:
+if 1:
     class Test__complex(tests.TestCase):    
         def setUp(self):
             self.subgroup = ncobj.Group()
@@ -451,9 +451,9 @@ if 0:
             self.root = ncobj.Group()
             self.root.groups.setitem_reference('group_X', self.subgroup)
 
-        def test__complex(self):
-            print
-            print self.root
+        def test__path(self):
+            import ncobj.grouping as ncg
+            print ncg.group_path(list(self.subgroup.variables)[0])
 
 if __name__ == '__main__':
     tests.main()
