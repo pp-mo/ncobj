@@ -95,8 +95,8 @@ def find_named_definition(group, name, element_type):
     if issubclass(element_type, Dimension):
         container_prop_name = 'dimensions'
     else:
-        raise ValueError('type "{}" is not recognised or supported for '
-                         'definition lookup'.format(name))
+        raise ValueError('type "{}" is not recognised, or not supported for '
+                         'definition lookup'.format(element_type))
 
     return _find_definition(group, name, container_prop_name)
 
@@ -222,4 +222,3 @@ def complete(group):
 
     # Tidy up after.
     _remove_dims_varsdata(group)
-

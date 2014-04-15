@@ -333,8 +333,6 @@ class NcobjContainer(object):
         """
         self._setitem_ref_or_copy(name, element, detached_copy=True)
 
-    _pop_default = object()
-    
     def pop(self, *args, **kwargs):
         # NOTE: *ALL* element-removing operations come through here.
         result = self._content.pop(*args, **kwargs)
@@ -485,4 +483,3 @@ class NcGroupsContainer(NcobjContainer):
     def pop(self, name):
         NcobjContainer.pop(self, name)
         self[name]._parent = None
-
