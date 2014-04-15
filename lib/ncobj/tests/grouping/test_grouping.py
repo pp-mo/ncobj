@@ -7,9 +7,14 @@ from ncobj.grouping import walk_group_objects
 from ncobj.grouping import all_variables, all_dimensions, all_groups
 from ncobj.grouping import group_path
 from ncobj.grouping import find_named_definition as fnd
+from ncobj.grouping import NameConflictError, DimensionConflictError
+from ncobj.grouping import check_group_name_clashes as check_names
+from ncobj.grouping import _has_varsdata as group_is_tagged
+from ncobj.grouping import _add_dims_varsdata as tag_group
+from ncobj.grouping import check_dims_usage_consistent as check_dims
 
 
-class MixinTestSetup(tests.TestCase):
+class _BaseTest_Grouping(tests.TestCase):
     def check_all_in_str(self, str, matches):
         for match in matches:
             self.assertIn(match, str)
@@ -36,7 +41,7 @@ def ov(name, dd=None, aa=None):
                         dtype=None, data=[])
 
 
-class Test_walk_group_objects(MixinTestSetup):
+class Test_walk_group_objects(_BaseTest_Grouping):
     def setUp(self):
         self.root = og('',
                        aa=[oa('test_global_attr', v='test string')],
@@ -93,7 +98,7 @@ class Test_walk_group_objects(MixinTestSetup):
         self._check_all_of_type(walk_objs, nco.Group)
 
 
-class Test_group_path(MixinTestSetup):
+class Test_group_path(_BaseTest_Grouping):
     def test_isolate_and_attribute(self):
         self.assertEqual('att_a', group_path(oa('att_a')))
 
@@ -110,7 +115,7 @@ class Test_group_path(MixinTestSetup):
                          group_path(test_dim))
 
 
-class Test_find_named_definition(MixinTestSetup):
+class Test_find_named_definition(_BaseTest_Grouping):
     def test_type_bad(self):
         g = og('')
         with self.assertRaises(ValueError) as err_context:
@@ -166,6 +171,136 @@ class Test_find_named_definition(MixinTestSetup):
         test_dim = g.dimensions['dim_q']
         self.assertEquals(fnd(test_grp, 'dim_q', nco.Dimension),
                           test_dim)
+
+
+class Test_check_group_name_clashes(_BaseTest_Grouping):
+    def test_empty(self):
+        g = og('root')
+        self.assertFalse(group_is_tagged(g))
+        check_names(g)
+        self.assertFalse(group_is_tagged(g))
+
+    def test_okay(self):
+        g = og('root', vv=[ov('test_v')], dd=[od('test_d')],
+               gg=[og('test_g')])
+        self.assertFalse(group_is_tagged(g))
+        check_names(g)
+        self.assertFalse(group_is_tagged(g))
+
+    def test_var_vs_dim(self):
+        g = og('root', vv=[ov('tst1')], dd=[od('tst1')])
+        with self.assertRaises(NameConflictError) as err_context:
+            check_names(g)
+        msg = err_context.exception.message
+        self.check_all_in_str(msg, ['group "root"', 'both',
+                                    'variable', 'dimension', 'tst1'])
+
+    def test_var_vs_grp(self):
+        g = og('root', vv=[ov('tst1')], gg=[og('tst1')])
+        with self.assertRaises(NameConflictError) as err_context:
+            check_names(g)
+        msg = err_context.exception.message
+        self.check_all_in_str(msg, ['group "root"', 'both',
+                                    'variable', 'group', 'tst1'])
+
+    def test_dim_vs_grp(self):
+        g = og('root', dd=[od('tst1')], gg=[og('tst1')])
+        with self.assertRaises(NameConflictError) as err_context:
+            check_names(g)
+        msg = err_context.exception.message
+        self.check_all_in_str(msg, ['group "root"', 'both',
+                                    'dimension', 'group', 'tst1'])
+
+    def test_subgroup_okay(self):
+        g = og('root', vv=[ov('test_var')],
+               gg=[og('tst1', vv=[ov('test_var')])])
+        subgroup = g.groups['tst1']
+        self.assertFalse(group_is_tagged(g))
+        self.assertFalse(group_is_tagged(subgroup))
+        check_names(g)
+        self.assertFalse(group_is_tagged(g))
+        self.assertFalse(group_is_tagged(subgroup))
+
+
+class Test_check_dims_usage_consistent(_BaseTest_Grouping):
+    def test_empty(self):
+        g = og('')
+        check_dims(g)
+
+    def test_okay_single(self):
+        g = og('', dd=[od('x')], vv=[ov('v1', dd=[od('x')])])
+        check_dims(g)
+
+    def test_okay_match(self):
+        g = og('', dd=[od('x')],
+               vv=[ov('v1', dd=[od('x', 3)]),
+                   ov('v2', dd=[od('x', 3)])])
+        check_dims(g)
+
+    def test_fail_nomatch(self):
+        g = og('', dd=[od('x')],
+               vv=[ov('v1', dd=[od('x', 2)]),
+                   ov('v2', dd=[od('x', 3)])])
+        with self.assertRaises(DimensionConflictError) as err_context:
+            check_dims(g)
+        msg = err_context.exception.message
+        self.check_all_in_str(msg, ['/v1', '"x" = 2', '/v2', '"x" = 3'])
+
+    def test_okay_match_unlimited(self):
+        g = og('', dd=[od('x')],
+               vv=[ov('v1', dd=[od('x', 3)]),
+                   ov('v2', dd=[od('x', 3, u=True)])])
+        check_dims(g)
+
+    def test_okay_match_subgroup(self):
+        g = og('', dd=[od('x')],
+               vv=[ov('v1', dd=[od('x', 2)])],
+               gg=[og('subgroup', vv=[ov('v2', dd=[od('x', 2)])])])
+        check_dims(g)
+
+    def test_fail_nomatch_subgroup(self):
+        g = og('', dd=[od('x')],
+               vv=[ov('v1', dd=[od('x', 2)])],
+               gg=[og('subgroup', vv=[ov('v2', dd=[od('x', 3)])])])
+        with self.assertRaises(DimensionConflictError) as err_context:
+            check_dims(g)
+        msg = err_context.exception.message
+        self.check_all_in_str(msg, ['/v1', '"x" = 2',
+                                    '/subgroup/v2', '"x" = 3'])
+
+    def test_okay_override_subgroup(self):
+        # NOTE: here *two* 'x' dimensions, which do not conflict.
+        g = og('', dd=[od('x')],
+               vv=[ov('v1', dd=[od('x', 2)])],
+               gg=[og('subgroup',
+                      dd=[od('x')],
+                      vv=[ov('v2', dd=[od('x', 3)])])])
+        check_dims(g)
+
+    def test_with_varsdata_okay(self):
+        g = og('', dd=[od('x')],
+               vv=[ov('v1', dd=[od('x', 2)])],
+               gg=[og('subgroup', vv=[ov('v2', dd=[od('x', 2)])])])
+        subgroup = g.groups['subgroup']
+        tag_group(g)
+        self.assertTrue(group_is_tagged(g))
+        self.assertFalse(group_is_tagged(subgroup))
+        check_dims(g)
+        self.assertTrue(group_is_tagged(g))
+        self.assertFalse(group_is_tagged(subgroup))
+
+    def test_with_varsdata_fail(self):
+        g = og('', dd=[od('x')],
+               vv=[ov('v1', dd=[od('x', 2)])],
+               gg=[og('subgroup', vv=[ov('v2', dd=[od('x', 3)])])])
+        subgroup = g.groups['subgroup']
+        tag_group(g)
+        self.assertTrue(group_is_tagged(g))
+        self.assertFalse(group_is_tagged(subgroup))
+        with self.assertRaises(DimensionConflictError):
+            check_dims(g)
+        self.assertTrue(group_is_tagged(g))
+        self.assertFalse(group_is_tagged(subgroup))
 
 
 if __name__ == '__main__':

@@ -145,31 +145,37 @@ _DimVarData = namedtuple('DimVarsData', 'var dim')
 
 
 def _add_dims_varsdata(group):
-    if not hasattr(group, '_with_varsdata'):
+    # NOTE: only on completed structures (i.e. dim definitions all exist).
+    if not _has_varsdata(group):
         group._with_varsdata = True
         # Add blank data to every dimension definition.
         for dim in all_dimensions(group):
             dim._varsdata = []
         # Scan all variables and record usage against dimensions referenced.
         for var in all_variables(group):
+            var_group = var.container.in_element
+            assert isinstance(var_group, Group)
             for dim in var.dimensions:
                 # Locate existing dimension in structure, if any.
-                dim_def = find_named_definition(group, dim.name, Dimension)
+                dim_def = find_named_definition(var_group, dim.name, Dimension)
                 assert dim_def is not None
                 # Add the variable with its dimension usage.
                 dim_def._varsdata.append(_DimVarData(var, dim))
 
 
 def _remove_dims_varsdata(group):
-    if hasattr(group, '_with_varsdata'):
-        for dim in all_dimensions(group):
-            del dim._varsdata
-        del group._with_varsdata
+    for dim in all_dimensions(group):
+        del dim._varsdata
+    del group._with_varsdata
+
+
+def _has_varsdata(group):
+    return hasattr(group, '_with_varsdata')
 
 
 def check_dims_usage_consistent(group):
     # Check that the requirements for all dimensions are consistent.
-    has_existing_varsdata = hasattr(group, '_has_varsdata')
+    has_existing_varsdata = _has_varsdata(group)
     try:
         if not has_existing_varsdata:
             _add_dims_varsdata(group)
@@ -179,8 +185,8 @@ def check_dims_usage_consistent(group):
                 for (varx, dimx) in dim._varsdata[1:]:
                     if dimx.length != dim1.length:
                         raise DimensionConflictError(
-                            'Variable "{}" requires dimension "{}={}", but '
-                            'variable "{}" requires "{}={}"'.format(
+                            'Variable "{}" requires dimension "{}" = {}, but '
+                            'variable "{}" requires "{}" = {}".'.format(
                                 group_path(var1), dim1.name, dim1.length,
                                 group_path(varx), dimx.name, dimx.length))
     finally:
