@@ -353,10 +353,8 @@ class Test_Group(tests.TestCase, GenericNcObjTestMixin):
         self.assertEqual(child.parent_group, parent)
 
 if 0:
-    class Test__api(tests.TestCase):    
+    class Test__api(tests.TestCase):
         def setUp(self):
-    #        self.input_dataset = object()
-
             self.nco = ncobj.Group()
             att1 = ncobj.Attribute('att_1', value=4.3)
             att2 = ncobj.Attribute('att_2', value=4.7)
@@ -429,7 +427,7 @@ if 0:
     #        nco.write(sel.out_file)
 
 if 1:
-    class Test__complex(tests.TestCase):    
+    class Test__complex(tests.TestCase):
         def setUp(self):
             self.subgroup = ncobj.Group()
             att1 = ncobj.Attribute('att_1', value=4.3)
