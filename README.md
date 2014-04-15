@@ -6,13 +6,18 @@ programmatic handling of NetCDF files.
 Enables quick+easy copying of data from one netCDF4 file to another, with
 arbitrary changes.  Intended scope similar to NCO commands.
 
-Present Status
---------------
-2014-04-08:
- * Still reworking core classes + writing tests.
- * Basic unit tests written + working.
+Status
+------
+2014-04-15:
+ * Core classes written
+   * Basic unit tests written + working.
+   * Some integration tests, currently disabled.
+ * Structure management prototype code (ncobj.grouping)
+   * Partial unit tests written, and working.
+   * Still more to write.
  * Non-working usecase examples demonstrate intended coding forms + api.
  * No working file i/o yet.
+
 
 Further motivation and ideas :
 ------------------------------
