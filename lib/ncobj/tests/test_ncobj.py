@@ -426,36 +426,6 @@ if 0:
     #                units_att.value == units_to
     #        nco.write(sel.out_file)
 
-if 1:
-    class Test__complex(tests.TestCase):
-        def setUp(self):
-            self.subgroup = ncobj.Group()
-            att1 = ncobj.Attribute('att_1', value=4.3)
-            att2 = ncobj.Attribute('att_2', value=4.7)
-            self.subgroup.attributes.add(att1)
-            self.subgroup.attributes.add(att2)
-            dim_y = ncobj.Dimension('y', length=2)
-            dim_x = ncobj.Dimension('x', length=3)
-            self.subgroup.dimensions.add(dim_x)
-            self.subgroup.dimensions.add(dim_y)
-            var1 = ncobj.Variable('var_A',
-                                  dimensions=(dim_y, dim_x),
-                                  dtype=float,
-                                  data=[[1, 2, 3], [4, 5, 6]])
-            var1.attributes.add(ncobj.Attribute('var_att_a', value='this'))
-            self.subgroup.variables.add(var1)
-            var2 = ncobj.Variable('var_B',
-                                  dimensions=(),
-                                  dtype=float,
-                                  data=[])
-            self.subgroup.variables.add(var2)
-
-            self.root = ncobj.Group()
-            self.root.groups.setitem_reference('group_X', self.subgroup)
-
-        def test__path(self):
-            import ncobj.grouping as ncg
-            print ncg.group_path(list(self.subgroup.variables)[0])
 
 if __name__ == '__main__':
     tests.main()
