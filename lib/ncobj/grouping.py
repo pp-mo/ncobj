@@ -180,9 +180,14 @@ def check_dims_usage_consistent(group):
         if not has_existing_varsdata:
             _add_dims_varsdata(group)
         for dim in all_dimensions(group):
-            if len(dim._varsdata) > 1:
-                var1, dim1 = dim._varsdata[0]
-                for (varx, dimx) in dim._varsdata[1:]:
+            # Look for conflicting requirements, which means defined (non-None)
+            # lengths that don't match.
+            # Different "unlimited" vals is not an error, so ignore those here.
+            vars_dims = [var_dim for var_dim in dim._varsdata
+                         if var_dim.dim.length is not None]
+            if len(vars_dims) > 1:
+                var1, dim1 = vars_dims[0]
+                for (varx, dimx) in vars_dims[1:]:
                     if dimx.length != dim1.length:
                         raise DimensionConflictError(
                             'Variable "{}" requires dimension "{}" = {}, but '
@@ -213,12 +218,13 @@ def complete(group):
 
     # Fix properties of all dimension definitions from variables using them.
     for dim in all_dimensions(group):
-        vardims = [vardata.dim for vardata in dim._varsdata]
-        if vardims:
+        if dim._varsdata:
             # NOTE: do nothing to any unused dimensions here.
             # Can easily prune these if wanted.
-            dim.length = vardims[0].length
-            dim.unlimited = any(vardim.unlimited for vardim in vardims)
+            dims = [vardata.dim for vardata in dim._varsdata]
+            lengths = [dimx.length for dimx in dims if dimx.length is not None]
+            dim.length = lengths[0] if lengths else None
+            dim.unlimited = any(dimx.unlimited for dimx in dims)
 
     # Connect all variables' dims directly to dimension definitions.
     # (N.B. effectively the opposite of the 'detached' concept).

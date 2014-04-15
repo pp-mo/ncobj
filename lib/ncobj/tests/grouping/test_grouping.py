@@ -13,6 +13,7 @@ from ncobj.grouping import _has_varsdata as group_is_tagged
 from ncobj.grouping import _add_dims_varsdata as tag_group
 from ncobj.grouping import check_dims_usage_consistent as check_dims
 from ncobj.grouping import add_missing_dims
+from ncobj.grouping import complete
 
 
 class _BaseTest_Grouping(tests.TestCase):
@@ -345,7 +346,7 @@ class Test_add_missing_dims(_BaseTest_Grouping):
         self.assertIn(od('y'), g.dimensions)
         self.assertIn(od('z'), g.dimensions)
 
-    def test_missing_length(self):
+    def test_length(self):
         g = og('', vv=[ov('v', dd=[od('x', 2)])])
         self.assertEqual(all_dimensions(g), [])
         r = add_missing_dims(g)
@@ -354,7 +355,7 @@ class Test_add_missing_dims(_BaseTest_Grouping):
         self.assertNotEqual(all_dimensions(g), [od('x')])
         self.assertEqual(all_dimensions(g), [od('x', 2)])
 
-    def test_missing_unlimited(self):
+    def test_unlimited(self):
         g = og('', vv=[ov('v', dd=[od('x', 2, u=True)])])
         self.assertEqual(all_dimensions(g), [])
         add_missing_dims(g)
@@ -362,26 +363,147 @@ class Test_add_missing_dims(_BaseTest_Grouping):
         self.assertNotEqual(all_dimensions(g), [od('x', 2)])
         self.assertEqual(all_dimensions(g), [od('x', 2, u=True)])
 
-    def test_missing_joint(self):
+    def test_shared_clash(self):
+        # NOTE: "complete" won't allow this, but this method doesn't care.
         g = og('', vv=[ov('v1', dd=[od('x', 2)]),
                        ov('v2', dd=[od('x', 3)])])
         add_missing_dims(g)
         self.assertEqual(len(g.dimensions), 1)
         self.assertEqual(g.dimensions.names(), ['x'])
 
-    def test_missing_subgroup(self):
+    def test_subgroup(self):
         g = og('',
                gg=[og('subgroup', vv=[ov('v1', dd=[od('y', 2)])])])
         add_missing_dims(g)
         self.assertEqual(len(g.dimensions), 1)
         self.assertEqual(g.dimensions.names(), ['y'])
 
-    def test_missing_subgroup_mixed(self):
+    def test_subgroup_mixed(self):
         g = og('', vv=[ov('v1', dd=[od('q')])],
                gg=[og('subgroup', vv=[ov('v1', dd=[od('q', 2)])])])
         add_missing_dims(g)
         self.assertEqual(len(g.dimensions), 1)
         self.assertEqual(g.dimensions.names(), ['q'])
+
+
+class Test_complete(_BaseTest_Grouping):
+    def test_empty(self):
+        g = og('')
+        complete(g)
+        self.assertEqual(all_dimensions(g), [])
+
+    def test_nomissing(self):
+        g = og('', dd=[od('x')], vv=[ov('v', dd=[od('x')])])
+        test_dim = g.dimensions['x']
+        self.assertEqual(all_dimensions(g), [test_dim])
+        self.assertIsNot(g.variables['v'].dimensions[0], test_dim)
+        complete(g)
+        self.assertEqual(all_dimensions(g), [test_dim])
+        self.assertIs(g.variables['v'].dimensions[0], test_dim)
+
+    def test_missing(self):
+        g = og('', vv=[ov('v', dd=[od('x')])])
+        self.assertEqual(all_dimensions(g), [])
+        complete(g)
+        self.assertEqual(all_dimensions(g), [od('x')])
+        self.assertIs(g.variables['v'].dimensions[0], g.dimensions['x'])
+
+    def test_mixture(self):
+        g = og('', dd=[od('x')], vv=[ov('v', dd=[od('y')])])
+        self.assertEqual(all_dimensions(g), [od('x')])
+        complete(g)
+        self.assertEqual(len(g.dimensions), 2)
+        self.assertIn(od('x'), g.dimensions)
+        self.assertIn(od('y'), g.dimensions)
+        self.assertIs(g.variables['v'].dimensions[0], g.dimensions['y'])
+
+    def test_multiple(self):
+        g = og('', vv=[ov('v1', dd=[od('x'), od('y')]),
+                       ov('v2', dd=[od('y'), od('z')])])
+        self.assertEqual(all_dimensions(g), [])
+        complete(g)
+        self.assertEqual(len(g.dimensions), 3)
+        self.assertIn(od('x'), g.dimensions)
+        self.assertIn(od('y'), g.dimensions)
+        self.assertIn(od('z'), g.dimensions)
+        v1, v2 = g.variables['v1'], g.variables['v2']
+        dx, dy, dz = [g.dimensions[name] for name in ('x', 'y', 'z')]
+        self.assertIs(v1.dimensions[0], dx)
+        self.assertIs(v1.dimensions[1], dy)
+        self.assertIs(v2.dimensions[0], dy)
+        self.assertIs(v2.dimensions[1], dz)
+
+    def test_length(self):
+        g = og('', vv=[ov('v', dd=[od('x', 2)])])
+        self.assertEqual(all_dimensions(g), [])
+        complete(g)
+        self.assertNotEqual(list(g.dimensions), [od('x')])
+        self.assertEqual(list(g.dimensions), [od('x', 2)])
+
+    def test_unlimited(self):
+        g = og('', vv=[ov('v1', dd=[od('x', 2, u=True)]),
+                       ov('v2', dd=[od('x', 2)])])
+        self.assertEqual(all_dimensions(g), [])
+        self.assertEqual(g.variables['v2'].dimensions[0], od('x', 2))
+        complete(g)
+        self.assertNotEqual(g.variables['v2'].dimensions[0], od('x', 2))
+        self.assertEqual(list(g.dimensions), [od('x', 2, u=True)])
+        test_dim = g.dimensions['x']
+        self.assertIs(g.variables['v1'].dimensions[0], test_dim)
+        self.assertIs(g.variables['v2'].dimensions[0], test_dim)
+
+    def test_shared_clash(self):
+        g = og('', vv=[ov('v1', dd=[od('x', 2)]),
+                       ov('v2', dd=[od('x', 3)])])
+        with self.assertRaises(DimensionConflictError):
+            complete(g)
+
+    def test_subgroup(self):
+        g = og('',
+               gg=[og('subgroup', vv=[ov('v1', dd=[od('y', 2)])])])
+        complete(g)
+        self.assertEqual(len(g.dimensions), 1)
+        self.assertEqual(list(g.dimensions), [od('y', 2)])
+        self.assertIs(g.groups['subgroup'].variables['v1'].dimensions[0],
+                      g.dimensions['y'])
+
+    def test_subgroup_mixed(self):
+        g = og('', vv=[ov('v1', dd=[od('q')])],
+               gg=[og('subgroup', vv=[ov('v1', dd=[od('q', 2)])])])
+        self.assertEqual(list(g.dimensions), [])
+        v1 = g.variables['v1']
+        v2 = g.groups['subgroup'].variables['v1']
+
+        complete(g)
+
+        self.assertEqual(len(g.dimensions), 1)
+        self.assertEqual(list(g.dimensions), [od('q', 2)])
+        test_dim = g.dimensions['q']
+        self.assertIs(v1.dimensions[0], test_dim)
+        self.assertIs(v2.dimensions[0], test_dim)
+
+    def test_part_complete(self):
+        # Build a group with one variable already fixed to its dimension.
+        g = og('', dd=[od('x', 3), od('q')], vv=[ov('v1')],
+               gg=[og('subgroup', vv=[ov('v1', dd=[od('q', 2)])])])
+        fixed_dim_x = g.dimensions['x']
+        g.variables['v1'].dimensions = [fixed_dim_x]
+        self.assertIs(g.variables['v1'].dimensions[0], fixed_dim_x)
+        # Check that 'complete' fixes the other without rewriting this one.
+        q_nolen = od('q')
+        q_len = od('q', 2)
+        var_dim_q = g.groups['subgroup'].variables['v1'].dimensions[0]
+        grp_dim_q = g.dimensions['q']
+        self.assertNotEqual(var_dim_q, grp_dim_q)
+        self.assertEqual(var_dim_q, q_len)
+        self.assertEqual(grp_dim_q, q_nolen)
+        complete(g)
+        self.assertIs(g.variables['v1'].dimensions[0], fixed_dim_x)
+        var_dim_q = g.groups['subgroup'].variables['v1'].dimensions[0]
+        grp_dim_q = g.dimensions['q']
+        self.assertIs(var_dim_q, grp_dim_q)
+        self.assertNotEqual(var_dim_q, q_nolen)
+        self.assertEqual(var_dim_q, q_len)
 
 
 if __name__ == '__main__':
