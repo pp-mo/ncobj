@@ -119,6 +119,17 @@ class IncompleteStructureError(Exception):
 
 # Check that all names within a group are compatible.
 def check_group_name_clashes(group):
+    """
+    Check this group and subgroups for any name clashes between components.
+
+    If found, raise a :class:`NameConflictError` describing the first clash.
+
+    .. note::
+
+        Name collisions can occur between variables, dimensions and subgroups:
+        In NetCDF, these components share a namespace within each group.
+
+    """
     vv, dd, gg = ('variable', 'dimension', 'group')
     for grp in all_groups(group):
         for type1, type2 in ((vv, dd), (vv, gg), (dd, gg)):
@@ -134,6 +145,23 @@ def check_group_name_clashes(group):
 
 
 def add_missing_dims(group):
+    """
+    Create new definitions for any missing dimensions in the group.
+
+    A missing dimension is one referred to by a variable in 'group' or its
+    subgroups, for which no definition can be located by
+    :function:`find_named_definition`.  The new ones are created in 'group'.
+
+    Returns:
+        A list of the definitions created for missing dimensions.
+
+    .. note::
+
+        If 'group' is not itself the root, then a matching definition may be
+        found in a parent group.  In these cases, no new definition is created
+        (even though the required definition is outside 'group').
+
+    """
     # Find or create definitions for all dimensions used by all variables.
     new_created_dims = []
     for var in all_variables(group):
@@ -150,6 +178,23 @@ def add_missing_dims(group):
 
 
 def has_no_missing_dims(group, fail_if_not=False):
+    """
+    Check that matching definitions exist for all dimensions used in the
+    variables of this group (and its sub-groups).
+
+    Kwargs:
+
+    * fail_if_not (bool):
+        If set, then if and when a missing dimension is found, raise an
+        :class:`IncompleteStructureError`, instead of just returning False.
+
+    .. note::
+
+        If 'group' is not itself the root, then a matching definition may be
+        found in a parent group.  Such a dimension is not counted as 'missing'
+        (even though the required definition is outside 'group').
+
+    """
     for var in all_variables(group):
         for dim in var.dimensions:
             if not find_named_definition(var.container.in_element, dim.name,
@@ -183,7 +228,7 @@ def _add_dims_varsdata(group):
                 if len(shape) != len(var.dimensions):
                     raise DimensionConflictError(
                         'Variable {} has {} dimensions, but its data has {} '
-                        'dimensions.'.format(group_path(var), 
+                        'dimensions.'.format(group_path(var),
                                              len(var.dimensions),
                                              len(var.data.shape)))
                 var_dims = [dim if shape[i_dim] == dim.length
@@ -210,9 +255,24 @@ def _has_varsdata(group):
 
 
 def check_consistent_dims_usage(group):
-    # Check that the requirements for all dimensions are consistent.
+    """
+    Check that the requirements for all dimensions are consistent, and if not
+    raise a :class:`DimensionConflictError`.
 
-    # NOTE: only on completed structures (i.e. dim definitions all exist).
+    This means that all references to each dimension must have the same length.
+    Where variables have attached data, the length is taken from the data shape
+    instead of the attached :class:`Dimension` object, and the number of
+    dimensions must also match.  Each dimension must also have a known length,
+    meaning that at least one reference must define the length, or have
+    attached data.
+
+    .. note::
+
+        Can only be used on groups with no missing dimensions, as described for
+        :function:`has_no_missing_dimensions`.
+        Otherwise a :class:`IncompleteStructureError` will be raised.
+
+    """
     has_existing_varsdata = _has_varsdata(group)
     if not has_existing_varsdata:
         _add_dims_varsdata(group)
@@ -223,6 +283,10 @@ def check_consistent_dims_usage(group):
             # Different "unlimited" vals is not an error, so ignore those here.
             vars_dims = [var_dim for var_dim in dim._varsdata
                          if var_dim.dim.length is not None]
+            if not vars_dims and dim.length is None:
+                raise DimensionConflictError(
+                    'No length can be deduced for dimension "{}".'.format(
+                        group_path(dim)))
             if len(vars_dims) > 1:
                 var1, dim1 = vars_dims[0]
                 for (varx, dimx) in vars_dims[1:]:
@@ -238,9 +302,27 @@ def check_consistent_dims_usage(group):
 
 
 def complete(group):
-    # Link all variable dimensions to definitions.
-    # Resolve all dimensions to match variable sizes.
-    # Check cross-class names.
+    """
+    Make this group internally consistent, by adding any missing dimension
+    definitions and linking all variable dimensions to their definitions.
+
+    This makes the structure fully compliant with NetCDF constraints.  This
+    ensures it is suitable to be written to a file.
+
+    Dimension definitions are made consistent with the data and dimension
+    information of all variables that reference them.  If this is not possible,
+    as decribed for :function:`check_consistent_dims_usage`, a
+    :class:`DimensionConflictError` is raised.
+    A dimension definition will also be made 'unlimited' if any of the
+    references requires it.
+
+    .. note::
+
+        A :class:`NameConflictError` can also result if components have
+        conflicting names, as described for
+        :function:`check_group_name_clashes`.
+
+    """
     # NOTE: make dimensions unlimited when required, and also allow these to be
     # used where the variable information implies a fixed dimension.
     new_dim_defs = add_missing_dims(group)

@@ -238,9 +238,16 @@ class Test_check_consistent_dims_usage(_BaseTest_Grouping):
         g = og('')
         check_dims(g)
 
-    def test_okay_single(self):
-        g = og('', dd=[od('x')], vv=[ov('v1', dd=[od('x')])])
+    def test_single(self):
+        g = og('', dd=[od('x')], vv=[ov('v1', dd=[od('x', 5)])])
         check_dims(g)
+
+    def test_fail_nolength(self):
+        g = og('', dd=[od('x')], vv=[ov('v1', dd=[od('x')])])
+        with self.assertRaises(DimensionConflictError) as err_context:
+            check_dims(g)
+        msg = err_context.exception.message
+        self.check_all_in_str(msg, ['No length', 'dimension "/x"'])
 
     def test_fail_incomplete(self):
         g = og('', vv=[ov('v1', dd=[od('x')])])
@@ -477,7 +484,7 @@ class Test_complete(_BaseTest_Grouping):
         self.assertEqual(all_dimensions(g), [])
 
     def test_nomissing(self):
-        g = og('', dd=[od('x')], vv=[ov('v', dd=[od('x')])])
+        g = og('', dd=[od('x', 3)], vv=[ov('v', dd=[od('x')])])
         test_dim = g.dimensions['x']
         self.assertEqual(all_dimensions(g), [test_dim])
         self.assertIsNot(g.variables['v'].dimensions[0], test_dim)
@@ -486,32 +493,30 @@ class Test_complete(_BaseTest_Grouping):
         self.assertIs(g.variables['v'].dimensions[0], test_dim)
 
     def test_missing(self):
-        g = og('', vv=[ov('v', dd=[od('x')])])
-        # NOTE: dims are not fully specified -- this is not an error
-        # (but it wouldn't save to file, of course)
+        g = og('', vv=[ov('v', dd=[od('x', 7)])])
         self.assertEqual(all_dimensions(g), [])
         complete(g)
-        self.assertEqual(all_dimensions(g), [od('x')])
+        self.assertEqual(all_dimensions(g), [od('x', 7)])
         self.assertIs(g.variables['v'].dimensions[0], g.dimensions['x'])
 
     def test_mixture(self):
-        g = og('', dd=[od('x')], vv=[ov('v', dd=[od('y')])])
-        self.assertEqual(all_dimensions(g), [od('x')])
+        g = og('', dd=[od('x', 1)], vv=[ov('v', dd=[od('y', 3)])])
+        self.assertEqual(all_dimensions(g), [od('x', 1)])
         complete(g)
         self.assertEqual(len(g.dimensions), 2)
-        self.assertIn(od('x'), g.dimensions)
-        self.assertIn(od('y'), g.dimensions)
+        self.assertIn(od('x', 1), g.dimensions)
+        self.assertIn(od('y', 3), g.dimensions)
         self.assertIs(g.variables['v'].dimensions[0], g.dimensions['y'])
 
     def test_multiple(self):
-        g = og('', vv=[ov('v1', dd=[od('x'), od('y')]),
-                       ov('v2', dd=[od('y'), od('z')])])
+        g = og('', vv=[ov('v1', dd=[od('x', 1), od('y')]),
+                       ov('v2', dd=[od('y', 2), od('z', 3)])])
         self.assertEqual(all_dimensions(g), [])
         complete(g)
         self.assertEqual(len(g.dimensions), 3)
-        self.assertIn(od('x'), g.dimensions)
-        self.assertIn(od('y'), g.dimensions)
-        self.assertIn(od('z'), g.dimensions)
+        self.assertIn(od('x', 1), g.dimensions)
+        self.assertIn(od('y', 2), g.dimensions)
+        self.assertIn(od('z', 3), g.dimensions)
         v1, v2 = g.variables['v1'], g.variables['v2']
         dx, dy, dz = [g.dimensions[name] for name in ('x', 'y', 'z')]
         self.assertIs(v1.dimensions[0], dx)
@@ -538,7 +543,7 @@ class Test_complete(_BaseTest_Grouping):
         self.assertIs(g.variables['v1'].dimensions[0], test_dim)
         self.assertIs(g.variables['v2'].dimensions[0], test_dim)
 
-    def test_shared_clash(self):
+    def test_shared_clash_fail(self):
         g = og('', vv=[ov('v1', dd=[od('x', 2)]),
                        ov('v2', dd=[od('x', 3)])])
         with self.assertRaises(DimensionConflictError):
@@ -559,9 +564,7 @@ class Test_complete(_BaseTest_Grouping):
         self.assertEqual(list(g.dimensions), [])
         v1 = g.variables['v1']
         v2 = g.groups['subgroup'].variables['v1']
-
         complete(g)
-
         self.assertEqual(len(g.dimensions), 1)
         self.assertEqual(list(g.dimensions), [od('q', 2)])
         test_dim = g.dimensions['q']
