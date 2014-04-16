@@ -13,9 +13,9 @@ from ncobj.grouping import IncompleteStructureError
 from ncobj.grouping import check_group_name_clashes as check_names
 from ncobj.grouping import _has_varsdata as group_is_tagged
 from ncobj.grouping import _add_dims_varsdata as tag_group
-from ncobj.grouping import check_dims_usage_consistent as check_dims
+from ncobj.grouping import check_consistent_dims_usage as check_dims
 from ncobj.grouping import add_missing_dims
-from ncobj.grouping import is_complete
+from ncobj.grouping import has_no_missing_dims
 from ncobj.grouping import complete
 
 
@@ -227,7 +227,7 @@ class Test_check_group_name_clashes(_BaseTest_Grouping):
         self.assertFalse(group_is_tagged(subgroup))
 
 
-class Test_check_dims_usage_consistent(_BaseTest_Grouping):
+class Test_check_consistent_dims_usage(_BaseTest_Grouping):
     def test_empty(self):
         g = og('')
         check_dims(g)
@@ -314,8 +314,9 @@ class Test_check_dims_usage_consistent(_BaseTest_Grouping):
 
     @staticmethod
     def _mockdata(shape):
-        d = mock.Mock(spec=['shape'])
-        d.shape = shape
+        data = mock.Mock(spec=['shape'])
+        data.shape = shape
+        return data
 
     def test_with_data_shapes_okay(self):
         d1 = self._mockdata((2, 3))
@@ -419,19 +420,19 @@ class Test_add_missing_dims(_BaseTest_Grouping):
         self.assertEqual(g.dimensions.names(), ['q'])
 
 
-class Test_is_complete(_BaseTest_Grouping):
+class Test_has_no_missing_dims(_BaseTest_Grouping):
     def test_empty(self):
         g = og('')
-        self.assertTrue(is_complete(g))
+        self.assertTrue(has_no_missing_dims(g))
 
     def test_simple_fail(self):
         g = og('', vv=[ov('v', dd=[od('x')])])
-        self.assertFalse(is_complete(g))
+        self.assertFalse(has_no_missing_dims(g))
 
     def test_fail_error(self):
         g = og('', vv=[ov('v', dd=[od('x')])])
         with self.assertRaises(IncompleteStructureError) as err_context:
-            is_complete(g, fail_if_not=True)
+            has_no_missing_dims(g, fail_if_not=True)
         msg = err_context.exception.message
         self.check_all_in_str(msg, [
             'Variable "/v"', 'dimension "x"', 'no definition exists'])
@@ -442,7 +443,7 @@ class Test_is_complete(_BaseTest_Grouping):
                gg=[og('subgroup', dd=[od('z')],
                       vv=[ov('sv1', dd=[od('x')]),
                           ov('sv2', dd=[od('y'), od('z')])])])
-        self.assertTrue(is_complete(g))
+        self.assertTrue(has_no_missing_dims(g))
 
     def test_grouped_fail(self):
         g = og('', dd=[od('x'), od('y')],
@@ -451,7 +452,7 @@ class Test_is_complete(_BaseTest_Grouping):
                       vv=[ov('sv1', dd=[od('x')]),
                           ov('sv2', dd=[od('y'), od('z')])])])
         with self.assertRaises(IncompleteStructureError) as err_context:
-            is_complete(g, fail_if_not=True)
+            has_no_missing_dims(g, fail_if_not=True)
         msg = err_context.exception.message
         self.check_all_in_str(msg, [
             'Variable "/subgroup/sv2"', 'dimension "z"',

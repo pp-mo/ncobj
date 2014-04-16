@@ -1,66 +1,3 @@
-
-Group.resolve_all_refs(self, create_missing=True, create_at_top=False)
-    """
-    Scan for all element references within this group and its children, and
-    replace these with links to actual definitions found in any of the parent
-    groups of the reference.
-
-    This can create new definitions anywhere in the hierarchy that this group
-    belongs to, including in its parents.
-
-    Kwargs:
-
-    * create_missing (bool):
-        Whether to create matching attached definitions, when existing ones are
-        not present in the existing group structure.
-        If False, the unresolved references are left as detached elements (but
-        these may be copies of the originals).
-    * create_at_top (bool):
-        Whether to place any created missing definitions in the root group.
-        If False, missing definitions are made in the smallest enclosing
-        group.
-        With create_at_top=False, multiple independent but identical
-        definitions may be created.
-        With create_at_top=True, conflicts are possible and errors may result.
-
-        .. note::
- 
-           When 'create_missing' is False, this key has no effect.
-
-    """
-
-#
-# NOTE: this is pretty dangerous (!)
-# Maybe need a safe public-facing wrapper, that requires call on the root.
-#
-
-Group.copy(self, create_missing=False, create_at_top=False):
-    """
-    Create a new copy of the group, preserving internal element references
-    as far as possible, but decoupled from the existing one.
-
-    If the group contains references to elements with no definitions in the
-    group hierarchy, or in the parents of this group, these will either be left
-    unresolved, or linked to newly created definitions, as instructed.
-
-    Kwargs:
-
-    * create_missing (bool):
-        Behaviour as for 'resolve_all_refs'.  If False, the result can contain
-        unresolved references.
-    * create_at_top (bool):
-        Behaviour as for 'resolve_all_refs' (can raise an error).
-
-    """
-    # Replicate this group, but NB replica has no parent groups.
-    group = self.detached_copy()
-    # Resolve refs (internal ones will come out as they were).
-    group.resolve_all_refs(create_missing=create_missing,
-                           create_at_top=create_at_top)
-    return group
-
-
-
 MORE To-dos:
 ============
 
@@ -75,21 +12,13 @@ Variables data access:
         data from variable (see 'usecase_code_ideas.txt')
     - also support data = ndarray/maskedarray
     - also need writing to it?
+    - remove from var.dimensions when indexing removes data dimension ?
 
-Group structure tracking:
-    needs add/remove hooks to NcGroupsContainer (see latest ncobj.__init__)
+File i/o:
+    review, rewrite, write tests
 
-File i/o compatibility and "resolution":
-    on file output, in addition to references resolution
-        *also* need to check that variable data dimensionality matches the
-        numbers in the related dimension objects
-    another consistency issue :
-        """
-        Variables, groups, and types share a namespace. Within the same group, variables,
-        groups, and types must have unique names. (That is, a type and variable may not have the
-        same name within the same group, and similarly for sub-groups of that group.)
-        """
-        Needs another consistency check in resolve/complete/finalise.
+Documentation:
+    Various functions in ncobj.grouping need proper explanations.
 
 Usecase examples:
     demo to point out automatic re-creation of dimensions etc when copying
@@ -107,6 +36,7 @@ BUGS + CHANGES
 
 * ==!!!== Variable.dimensions.append does not enforce a detached_copy()
     * consider implementing a specialist container type instead of the list ?
+    * (NEWER) possibly doesn't matter, if we only ever use it as data ??
 
 * review str() methods -- could usefully do more like ncdump -ch
     * probably need a short form in str(), then separate call e.g. dump(), pp()
@@ -114,29 +44,20 @@ BUGS + CHANGES
 * nc_dataset.read should choke on user datatypes.
 * nc_dataset.read should use setitem_reference throughout (not copying)
 
-* consider whether a variable's list of dims can have a repeated dim ???
-    * CHECKED ++
-* Check that dim-names scope holes are possible ...
-    * CHECKED ++
-((NOTE: these should become tests))
+* add tests for dimensions special cases:
+    * variable's list of dims can have a repeated dim
+    * dim-names scope holes (inner overrides outer)
 
 possible alternative create-defs-locally:
     def localise(group):
         for subgroup in group.groups:
             localise(subgroup)
         complete(group)
+    * or maybe just document as an idea ?
 
 MOTIVATION + USECASE IDEAS
     see - http://marqh.github.io/ncContainers/build/html/index.html
 
-
-NOW TO FIX...
-    Tests for
-        GroupContainer got the setitem/pop upgrades
-        practically everything in ncobj.grouping
-            walk_group_objects
-            all_variables/dimensions/groups
-            group_path [[NEEDS MOVING]]
-            _find_definition
-            find_named_definition
-            (later stuff: name clashes, dims resolution, "complete")
+* Dimensions length inference from data shape (prototyped, not yet working).
+* decent docstrings for all the public API
+* version string, releases, tags + 'release notes' type info (somewhere?)

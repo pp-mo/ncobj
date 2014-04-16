@@ -149,12 +149,23 @@ def add_missing_dims(group):
     return new_created_dims
 
 
+def has_no_missing_dims(group, fail_if_not=False):
+    for var in all_variables(group):
+        for dim in var.dimensions:
+            if not find_named_definition(var.container.in_element, dim.name,
+                                         Dimension):
+                if fail_if_not:
+                    raise IncompleteStructureError(var, dim)
+                return False
+    return True
+
+
 _DimVarData = namedtuple('DimVarsData', 'var dim')
 
 
 def _add_dims_varsdata(group):
     # NOTE: only on completed structures (i.e. dim definitions all exist).
-    is_complete(group, fail_if_not=True)
+    has_no_missing_dims(group, fail_if_not=True)
 
     if not _has_varsdata(group):
         group._with_varsdata = True
@@ -192,7 +203,7 @@ def _has_varsdata(group):
     return hasattr(group, '_with_varsdata')
 
 
-def check_dims_usage_consistent(group):
+def check_consistent_dims_usage(group):
     # Check that the requirements for all dimensions are consistent.
 
     # NOTE: only on completed structures (i.e. dim definitions all exist).
@@ -220,17 +231,6 @@ def check_dims_usage_consistent(group):
             _remove_dims_varsdata(group)
 
 
-def is_complete(group, fail_if_not=False):
-    for var in all_variables(group):
-        for dim in var.dimensions:
-            if not find_named_definition(var.container.in_element, dim.name,
-                                         Dimension):
-                if fail_if_not:
-                    raise IncompleteStructureError(var, dim)
-                return False
-    return True
-
-
 def complete(group):
     # Link all variable dimensions to definitions.
     # Resolve all dimensions to match variable sizes.
@@ -240,7 +240,7 @@ def complete(group):
     new_dim_defs = add_missing_dims(group)
     _add_dims_varsdata(group)
     try:
-        check_dims_usage_consistent(group)
+        check_consistent_dims_usage(group)
         check_group_name_clashes(group)
     except Exception:
         # Restore original argument before sending caller an exception.
