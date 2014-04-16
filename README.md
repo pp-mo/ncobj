@@ -8,15 +8,20 @@ arbitrary changes.  Intended scope similar to NCO commands.
 
 Status
 ------
-2014-04-15:
+2014-04-16:
  * Core classes written
    * Basic unit tests written + working.
    * Some integration tests, currently disabled.
  * Structure management prototype code (ncobj.grouping)
-   * Partial unit tests written, and working.
-   * Still more to write.
+   * Unit tests written, and working.
+   * Integration tests wanted.
  * Non-working usecase examples demonstrate intended coding forms + api.
  * No working file i/o yet.
+
+### Future work, still to do ###
+ * Complete file i/o
+ * Working usage examples
+ * Support user types (compound + vlen)
 
 
 Further motivation and ideas :
