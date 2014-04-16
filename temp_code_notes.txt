@@ -58,6 +58,6 @@ possible alternative create-defs-locally:
 MOTIVATION + USECASE IDEAS
     see - http://marqh.github.io/ncContainers/build/html/index.html
 
-* Dimensions length inference from data shape (prototyped, not yet working).
+* remove Variable.dtype altogether, for now? (just take from .data instead)
 * decent docstrings for all the public API
 * version string, releases, tags + 'release notes' type info (somewhere?)

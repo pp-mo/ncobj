@@ -46,6 +46,12 @@ def ov(name, dd=None, aa=None, data=None):
                         dtype=None, data=data)
 
 
+def _mockdata(shape):
+    data = mock.Mock(spec=['shape'])
+    data.shape = shape
+    return data
+
+
 class Test_walk_group_objects(_BaseTest_Grouping):
     def setUp(self):
         self.root = og('',
@@ -312,31 +318,36 @@ class Test_check_consistent_dims_usage(_BaseTest_Grouping):
         self.assertTrue(group_is_tagged(g))
         self.assertFalse(group_is_tagged(subgroup))
 
-    @staticmethod
-    def _mockdata(shape):
-        data = mock.Mock(spec=['shape'])
-        data.shape = shape
-        return data
-
     def test_with_data_shapes_okay(self):
-        d1 = self._mockdata((2, 3))
+        d1 = _mockdata((2, 3))
         var_xy = ov('v1_xy', dd=[od('x'), od('y')], data=d1)
         g = og('', dd=[od('x'), od('y')], vv=[var_xy])
         check_dims(g)
 
     def test_okay_data_shapes_override(self):
-        d1 = self._mockdata((2, 3))
+        d1 = _mockdata((2, 3))
         var_xy = ov('v1_xy', dd=[od('x'), od('y')], data=d1)
         g = og('', dd=[od('x', 17), od('y', 23)], vv=[var_xy])
         check_dims(g)
 
-    def test_fail_on_data_shapes(self):
-        d1 = self._mockdata((2, 3))
+    def test_fail_conflicting_data_shapes(self):
+        d1 = _mockdata((2, 23))
         v1 = ov('v1', dd=[od('x'), od('y')], data=d1)
         v2 = ov('v2', dd=[od('x', 17), od('y', 23)])
         g = og('', dd=[od('x'), od('y')], vv=[v1, v2])
-        with self.assertRaises(DimensionConflictError):
+        with self.assertRaises(DimensionConflictError) as err_context:
             check_dims(g)
+        msg = err_context.exception.message
+        self.check_all_in_str(msg, ['/v1', '/v2', '"x" = 17', '"x" = 2'])
+
+    def test_fail_bad_data_shapes(self):
+        d1 = _mockdata((5, 3, 2))
+        g = og('', dd=[od('x'), od('y')],
+               vv=[ov('v1', dd=[od('x'), od('y')], data=d1)])
+        with self.assertRaises(DimensionConflictError) as err_context:
+            check_dims(g)
+        msg = err_context.exception.message
+        self.check_all_in_str(msg, ['/v1', '3 dimensions', '2 dimensions'])
 
 
 class Test_add_missing_dims(_BaseTest_Grouping):
@@ -476,6 +487,8 @@ class Test_complete(_BaseTest_Grouping):
 
     def test_missing(self):
         g = og('', vv=[ov('v', dd=[od('x')])])
+        # NOTE: dims are not fully specified -- this is not an error
+        # (but it wouldn't save to file, of course)
         self.assertEqual(all_dimensions(g), [])
         complete(g)
         self.assertEqual(all_dimensions(g), [od('x')])
@@ -577,6 +590,15 @@ class Test_complete(_BaseTest_Grouping):
         self.assertIs(var_dim_q, grp_dim_q)
         self.assertNotEqual(var_dim_q, q_nolen)
         self.assertEqual(var_dim_q, q_len)
+
+    def test_simple_data(self):
+        g = og('', vv=[ov('v', dd=[od('y'), od('x')],
+                          data=_mockdata((15, 20)))])
+        complete(g)
+        self.assertEqual(len(g.dimensions), 2)
+        self.assertEqual(g.dimensions['x'], od('x', 20))
+        self.assertEqual(g.dimensions['y'], od('y', 15))
+
 
 if __name__ == '__main__':
     tests.main()

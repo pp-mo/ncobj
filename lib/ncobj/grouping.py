@@ -180,8 +180,14 @@ def _add_dims_varsdata(group):
             else:
                 # Construct dims modified by var shape where needed.
                 shape = var.data.shape
+                if len(shape) != len(var.dimensions):
+                    raise DimensionConflictError(
+                        'Variable {} has {} dimensions, but its data has {} '
+                        'dimensions.'.format(group_path(var), 
+                                             len(var.dimensions),
+                                             len(var.data.shape)))
                 var_dims = [dim if shape[i_dim] == dim.length
-                            else Dimension(dim.name, length=len,
+                            else Dimension(dim.name, length=shape[i_dim],
                                            unlimited=dim.unlimited)
                             for i_dim, dim in enumerate(var.dimensions)]
             for dim in var_dims:
