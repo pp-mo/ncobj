@@ -109,6 +109,14 @@ class NameConflictError(Exception):
     pass
 
 
+class IncompleteStructureError(Exception):
+    def __init__(self, var, dim):
+        msg = ('Variable "{}" needs a dimension "{}", for which no definition '
+               'exists in the group structure.'.format(
+                   group_path(var), dim.name))
+        super(IncompleteStructureError, self).__init__(msg)
+
+
 # Check that all names within a group are compatible.
 def check_group_name_clashes(group):
     vv, dd, gg = ('variable', 'dimension', 'group')
@@ -146,6 +154,8 @@ _DimVarData = namedtuple('DimVarsData', 'var dim')
 
 def _add_dims_varsdata(group):
     # NOTE: only on completed structures (i.e. dim definitions all exist).
+    is_complete(group, fail_if_not=True)
+
     if not _has_varsdata(group):
         group._with_varsdata = True
         # Add blank data to every dimension definition.
@@ -153,11 +163,20 @@ def _add_dims_varsdata(group):
             dim._varsdata = []
         # Scan all variables and record usage against dimensions referenced.
         for var in all_variables(group):
-            var_group = var.container.in_element
-            assert isinstance(var_group, Group)
-            for dim in var.dimensions:
-                # Locate existing dimension in structure, if any.
-                dim_def = find_named_definition(var_group, dim.name, Dimension)
+            if not hasattr(var.data, 'shape'):
+                # Take dims as given (lengths etc. may be unspecified)
+                var_dims = var.dimensions
+            else:
+                # Construct dims modified by var shape where needed.
+                shape = var.data.shape
+                var_dims = [dim if shape[i_dim] == dim.length
+                            else Dimension(dim.name, length=len,
+                                           unlimited=dim.unlimited)
+                            for i_dim, dim in enumerate(var.dimensions)]
+            for dim in var_dims:
+                # Locate the matching dimension definition in the structure.
+                dim_def = find_named_definition(var.container.in_element,
+                                                dim.name, Dimension)
                 assert dim_def is not None
                 # Add the variable with its dimension usage.
                 dim_def._varsdata.append(_DimVarData(var, dim))
@@ -175,10 +194,12 @@ def _has_varsdata(group):
 
 def check_dims_usage_consistent(group):
     # Check that the requirements for all dimensions are consistent.
+
+    # NOTE: only on completed structures (i.e. dim definitions all exist).
     has_existing_varsdata = _has_varsdata(group)
+    if not has_existing_varsdata:
+        _add_dims_varsdata(group)
     try:
-        if not has_existing_varsdata:
-            _add_dims_varsdata(group)
         for dim in all_dimensions(group):
             # Look for conflicting requirements, which means defined (non-None)
             # lengths that don't match.
@@ -197,6 +218,17 @@ def check_dims_usage_consistent(group):
     finally:
         if not has_existing_varsdata:
             _remove_dims_varsdata(group)
+
+
+def is_complete(group, fail_if_not=False):
+    for var in all_variables(group):
+        for dim in var.dimensions:
+            if not find_named_definition(var.container.in_element, dim.name,
+                                         Dimension):
+                if fail_if_not:
+                    raise IncompleteStructureError(var, dim)
+                return False
+    return True
 
 
 def complete(group):
