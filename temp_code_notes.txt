@@ -21,7 +21,7 @@ Documentation:
         Variables referencing an unlimited dimension may have different actual
             lengths, therefore need separate dimension definitions (somehow)
             - this will be common when concatenating (otherwise) compatible inputs
-
+    Explain current usage of variable data, using nc-variables or ndarrays
 
 Usecase examples:
     demo to point out automatic re-creation of dimensions etc when copying
@@ -61,5 +61,5 @@ possible alternative create-defs-locally:
 MOTIVATION + USECASE IDEAS
     see - http://marqh.github.io/ncContainers/build/html/index.html
 
-* remove Variable.dtype altogether, for now? (just take from .data instead)
-* version string, releases, tags + 'release notes' type info (somewhere?)
+* either support datatypes, or remove Variable.dtype
+* allow nc_dataset.read to open a netCDF4 dataset + close when done.

@@ -82,6 +82,7 @@ def read(dataset):
 
         The returned data retains references to the netCDF4 dataset, which
         therefore must remain open while any of that data may still be needed.
+        (For this reason, we don't yet support read from a filepath string).
 
     """
     return _make_group('', dataset)

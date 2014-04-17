@@ -31,6 +31,9 @@ from abc import ABCMeta, abstractmethod, abstractproperty
 import numpy as np
 
 
+__version__ = '0.1'
+
+
 class NcObj(object):
     """
     An object representing a named information element in NetCDF.
