@@ -12,13 +12,19 @@ Variables data access:
         data from variable (see 'usecase_code_ideas.txt')
     - also support data = ndarray/maskedarray
     - also need writing to it?
-    - remove from var.dimensions when indexing removes data dimension ?
+    - remove dim from var.dimensions when indexing removes a data dimension ?
 
 File i/o:
     review, rewrite, write tests
 
 Documentation:
-    Various functions in ncobj.grouping need proper explanations.
+    General tutorial + examples would be good.
+    Various functions in ncobj.grouping need intro-type explanations.
+    Consistency for dimensions and lengths needs more explaining:
+        Variables referencing an unlimited dimension may have different actual
+            lengths, therefore need separate dimension definitions (somehow)
+            - this will be common when concatenating (otherwise) compatible inputs
+
 
 Usecase examples:
     demo to point out automatic re-creation of dimensions etc when copying
@@ -59,5 +65,4 @@ MOTIVATION + USECASE IDEAS
     see - http://marqh.github.io/ncContainers/build/html/index.html
 
 * remove Variable.dtype altogether, for now? (just take from .data instead)
-* decent docstrings for all the public API
 * version string, releases, tags + 'release notes' type info (somewhere?)
