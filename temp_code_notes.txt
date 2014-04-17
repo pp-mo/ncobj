@@ -14,9 +14,6 @@ Variables data access:
     - also need writing to it?
     - remove dim from var.dimensions when indexing removes a data dimension ?
 
-File i/o:
-    review, rewrite, write tests
-
 Documentation:
     General tutorial + examples would be good.
     Various functions in ncobj.grouping need intro-type explanations.

@@ -67,14 +67,80 @@ def _make_group(name, ds):
     return group
 
 
-def read(file_source):
-    # Read a dataset from a netCDF file.
-    if isinstance(file_source, netCDF4.Dataset):
-        # If a Dataset, use as-is.
-        group = _make_group('', file_source)
-    else:
-        # Convert input to a NetCDF4 dataset + read that.
-        with netCDF4.Dataset(file_source, 'r') as ds:
-            group = _make_group('', ds)
+def read(dataset):
+    """
+    Read a dataset from a netCDF file.
 
-    return group
+    Args:
+    * dataset (:class:`netCDF4.Dataset`):
+        An open readable file to scan for information.
+
+    Returns:
+        A :class:`ncobj.Group` representing the entire dataset.
+
+    .. note::
+
+        The returned data retains references to the netCDF4 dataset, which
+        therefore must remain open while any of that data may still be needed.
+
+    """
+    return _make_group('', dataset)
+
+
+def _save_nc_dim(ds, dim):
+    ds.createDimension(dim.name, 0 if dim.unlimited else dim.length)
+
+
+def _save_nc_var(ds, var):
+    ds_var = ds.createVariable(var.name,
+                               var.data.dtype,   # NB ?future?
+                               dimensions=[dim.name for dim in var.dimensions])
+    ds_var[...] = var.data[...]
+    for attr in var.attributes:
+        _save_nc_attr(ds_var, attr)
+
+
+def _save_nc_attr(ds, attr):
+    ds.setncattr(attr.name, attr.value)
+
+
+def _save_group(ds, group):
+    # order: dimensions, variables, attributes, sub-groups
+    for dim in group.dimensions:
+        _save_nc_dim(ds, dim)
+    for var in group.variables:
+        _save_nc_var(ds, var)
+    for attr in group.attributes:
+        _save_nc_attr(ds, attr)
+    for subgroup in group.groups:
+        ds_subgroup = ds.createGroup(group.name)
+        _save_group(ds_subgroup, subgroup)
+
+
+def write(dataset, group):
+    """
+    Write a dataset to a netCDF file.
+
+    Args:
+    * dataset (:class:`netCDF4.Dataset` or string):
+        An open writeable file, or a path string to create one.
+        If a file was created, it is closed again afterwards.
+
+    * group (:class:`ncobj.Group`):
+        Data to write.  Note that this is passed to
+        :function:`ncobj.grouping.complete`, which will usually modify it.
+
+    .. note::
+
+        Writing data into an existing file can obviously cause problems, but
+        will equally obviously work fine in specific cases.
+
+    """
+    # Ready group for output first (any error should lead unchanged).
+    ncg.complete(group)
+    # Either save to the provided dataset, or open one and save to it.
+    if isinstance(dataset, basestring):
+        with netCDF4.Dataset(dataset, 'w') as ds:
+            _save_group(ds, group)
+    else:
+        _save_group(dataset, group)
