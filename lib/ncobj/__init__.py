@@ -35,27 +35,25 @@ __version__ = '0.1'
 
 
 class NcObj(object):
-    """
-    An object representing a named information element in NetCDF.
-    """
+    """A generic (abstract) object representing a named element, aka a NetCDF "component"."""
     __metaclass__ = ABCMeta
 
     @abstractmethod
     def detached_copy(self):
-        """
-        Return an independent 'unlinked' copy of this element.
-        """
+        """Return an independent 'unlinked' copy of this element."""
         pass
 
     @abstractmethod
     def __eq__(self, other):
+        """Return whether equal to another."""
         pass
 
     def __init__(self, name=None):
         """
         Args:
+
         * name (string):
-        The name of this element (unique within any containing element).
+            The name of this element (unique within any containing element).
 
         """
         if name is None:
@@ -66,25 +64,31 @@ class NcObj(object):
 
     @property
     def container(self):
+        """The :class:`NcobjContainer` this is in, if any."""
         return self._container
 
     def is_definition(self):
+        """Return whether this element is a definition within a group."""
         return self.container and self.container.is_definitions()
 
     @property
     def name(self):
+        """Name of the element."""
         return self._name
 
     def rename(self, name):
         """
-        Rename an Ncobj element.
+        Rename the element.
 
         Args:
+
         * name (string):
             the new name for this element.
 
-        Note: this affects the container, if it is in one, and can raise an
-        error if the name already exists in the container.
+        .. note::
+
+            This affects the container, if it is in one, and can raise an
+            error if the name already exists in the container.
 
         """
         if self.container:
@@ -94,7 +98,10 @@ class NcObj(object):
             self._name = name
 
     def remove(self):
-        """Remove from the parent container (if any)."""
+        """
+        Remove from the parent container, if any.
+
+        """
         if self.container:
             self.container.remove(self)
 
@@ -116,7 +123,11 @@ class Dimension(NcObj):
     """A NetCDF dimension object."""
     def __init__(self, name, length=None, unlimited=False):
         NcObj.__init__(self, name)
+
+        #: The length of the dimension.
         self.length = length
+
+        #: Whether the dimension is unlimited.
         self.unlimited = unlimited
 
     def detached_copy(self):
@@ -143,15 +154,9 @@ class Attribute(NcObj):
     """A NetCDF attribute object."""
     def __init__(self, name, value):
         NcObj.__init__(self, name)
-        self._value = value
 
-    @property
-    def value(self):
-        return self._value
-
-    @value.setter
-    def value(self, newval):
-        self._value = newval
+        #: The value of the attribute.
+        self.value = value
 
     def detached_copy(self):
         return Attribute(name=self.name, value=self.value)
@@ -179,12 +184,20 @@ class Variable(NcObj):
             dimensions = []
         elif isinstance(dimensions, Dimension):
             dimensions = [dimensions]
+
+        #: :class:`Dimension` s of the variable.
         self.dimensions = list(dimensions)
+
+        #: :class:`Attribute` s of the variable.
         self.attributes = NcAttributesContainer(attributes)
+
         if hasattr(dtype, 'detached_copy'):
             # Needed for user-types.
             dtype = dtype.detached_copy()
         self.dtype = dtype
+
+        #: Variable data (indexable, with shape). Typically a
+        #: :class:`NetCDF4.Variable`, or :class:`numpy.ndarray`.
         self.data = data
 
     def detached_copy(self):
@@ -223,7 +236,9 @@ class Variable(NcObj):
 
 class NcobjContainer(object):
     """
-    A generic (abstract) container object for NetCDF elements.
+    A generic (abstract) container object for :class:`NcObj` objects
+    (aka "elements").
+
     """
     __metaclass__ = ABCMeta
 
@@ -231,6 +246,7 @@ class NcobjContainer(object):
     # N.B. this should really also be *static*, but apparently can't have this
     # in Python 2.  Ref: http://bugs.python.org/issue5867
     def element_type(self):
+        """The type (class) of elements this can contain."""
         return None
 
     def __init__(self, contents=None, in_element=None):
@@ -239,7 +255,8 @@ class NcobjContainer(object):
 
         * contents (iterable):
             A set of elements specifying the initial contents.
-        * in_element (:class:`NcObj'):
+
+        * in_element (:class:`NcObj`):
             The element that this container exists in (if any).
             If this is a group, then the container's elements are definitions
             in that group (and self.is_definitions() is True).
@@ -264,9 +281,14 @@ class NcobjContainer(object):
 
     @property
     def in_element(self):
+        """The element that this container exists in, if any."""
         return self._in_element
 
     def is_definitions(self):
+        """
+        Return whether this contains definitions in a :class:`Group`.
+
+        """
         return isinstance(self.in_element, Group)
 
     def _check_element_type(self, element):
@@ -282,17 +304,24 @@ class NcobjContainer(object):
             raise ValueError('invalid element name "{}"'.format(name))
 
     def detached_contents_copy(self):
+        """
+        Return a copy of the container with detached copies of the elements.
+
+        """
         elements = [element.detached_copy()
                     for element in self._content.itervalues()]
         return self.__class__(contents=elements)
 
     def names(self):
+        """Return a list of names of the contained elements."""
         return self._content.keys()
 
     def __getitem__(self, name):
+        """Return the named element."""
         return self._content[name]
 
     def get(self, name, default=None):
+        """Return the named element, if any, or a default value."""
         return self._content.get(name, default)
 
     def _setitem_ref_or_copy(self, name, element, detached_copy=False):
@@ -317,7 +346,8 @@ class NcobjContainer(object):
         """
         Put an element reference in the container, as _content[name]=value.
 
-        This is a lower-level operation than __setitem__, with important
+        This is a lower-level operation than
+        :meth:`~NcobjContainer.__setitem__`, with important
         side-effects on the 'element' arg: Whereas __setitem__ treats the
         assigned element simply as a value, of which it makes a detached copy,
         this method inserts the actual element specified (first removing it
@@ -331,46 +361,52 @@ class NcobjContainer(object):
         Place an element in the container under a given name.
 
         Note: content is copied from the provided element.  To insert an
-        actual existing NcObj, use :meth:`NcobjContainer.setitem_reference`.
+        actual existing NcObj, use :meth:`~NcobjContainer.setitem_reference`.
 
         """
         self._setitem_ref_or_copy(name, element, detached_copy=True)
 
     def pop(self, *args, **kwargs):
+        """Remove and return the named element."""
         # NOTE: *ALL* element-removing operations come through here.
         result = self._content.pop(*args, **kwargs)
         result._container = None
         return result
 
     def __delitem__(self, name):
+        """Remove the named element."""
         self.pop(name)
 
     def remove(self, element):
+        """Remove the matching element."""
         if element not in self._content.values():
             raise KeyError(element)
         return self.pop(element.name)
 
     def add(self, element):
-        """
-        Place an element in the container under its existing name.
-        """
+        """Place an element in the container under its existing name."""
         self[element.name] = element
 
     def add_allof(self, elements):
+        """Add multiple elements."""
         for element in elements:
             self.add(element)
 
     def remove_allof(self, elements):
+        """Remove multiple elements."""
         for element in elements:
             self.remove(element)
 
     def __iter__(self):
+        """Iterate over contents."""
         return self._content.itervalues()
 
     def __len__(self):
+        """Return length."""
         return len(self._content)
 
     def __eq__(self, other):
+        """Return whether equal to another."""
         return (isinstance(other, NcobjContainer) and
                 other.element_type == self.element_type and
                 self._content == other._content)
@@ -379,6 +415,7 @@ class NcobjContainer(object):
         return not (self == other)
 
     def rename_element(self, element, new_name):
+        """Change content name (can raise KeyError)."""
         element = self.remove(element)
         self.setitem_reference(new_name, element)
 
@@ -389,28 +426,31 @@ class NcobjContainer(object):
 
 
 class Group(NcObj):
+    """A NetCdf Group object."""
     def __init__(self, name='',
                  dimensions=None, variables=None, attributes=None,
                  sub_groups=None,
                  parent_group=None):
         NcObj.__init__(self, name)
         self._parent = parent_group
+
+        #: An :class:`NcDimensionsContainer` of dimensions in this Group.
         self.dimensions = NcDimensionsContainer(dimensions, in_element=self)
+
+        #: An :class:`NcVariablesContainer` of variables in this Group.
         self.variables = NcVariablesContainer(variables, in_element=self)
+
+        #: An :class:`NcAttributeContainer` of attributes in this Group.
         self.attributes = NcAttributesContainer(attributes, in_element=self)
+
+        #: An :class:`NcGroupContainer` of subgroups of this Group.
         self.groups = NcGroupsContainer(sub_groups, in_element=self)
         for group in self.groups:
             group._parent = self
 
-    # Publish which of our properties are simple definitions containers.
-    # N.B. does *not* include 'groups'.
-    @property
-    @staticmethod
-    def definitions_property_names():
-        return ('dimensions', 'variables', 'attributes')
-
     @property
     def parent_group(self):
+        """Return the parent Group of this, if any."""
         return self._parent
 
     # NOTE: at present, parent links are correctly established in __init__ and
@@ -449,21 +489,21 @@ class Group(NcObj):
 
 
 class NcAttributesContainer(NcobjContainer):
-    """An attributes container."""
+    """An :class:`Attribute` container."""
     @property
     def element_type(self):
         return Attribute
 
 
 class NcDimensionsContainer(NcobjContainer):
-    """A dimensions container."""
+    """A :class:`Dimension` container."""
     @property
     def element_type(self):
         return Dimension
 
 
 class NcVariablesContainer(NcobjContainer):
-    """A variables container."""
+    """A :class:`Variable` container."""
     @property
     def element_type(self):
         return Variable
@@ -471,7 +511,7 @@ class NcVariablesContainer(NcobjContainer):
 
 
 class NcGroupsContainer(NcobjContainer):
-    """A subgroups container."""
+    """A :class:`Group` container."""
     @property
     def element_type(self):
         return Group

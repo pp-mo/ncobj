@@ -72,6 +72,7 @@ def read(dataset):
     Read a dataset from a netCDF file.
 
     Args:
+
     * dataset (:class:`netCDF4.Dataset`):
         An open readable file to scan for information.
 
@@ -123,13 +124,14 @@ def write(dataset, group):
     Write a dataset to a netCDF file.
 
     Args:
+
     * dataset (:class:`netCDF4.Dataset` or string):
         An open writeable file, or a path string to create one.
         If a file was created, it is closed again afterwards.
 
     * group (:class:`ncobj.Group`):
         Data to write.  Note that this is passed to
-        :function:`ncobj.grouping.complete`, which will usually modify it.
+        :func:`ncobj.grouping.complete`, which will usually modify it.
 
     .. note::
 

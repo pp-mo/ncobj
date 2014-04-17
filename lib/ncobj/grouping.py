@@ -2,11 +2,24 @@
 Methods for dealing with the Group hierarchy.
 
 """
+import ncobj
 from ncobj import Group, Variable, Dimension, Attribute
 from collections import namedtuple
 
 
 def walk_group_objects(group, of_types=None):
+    """
+    Iterate over all contained components, recursively.
+
+    Args:
+
+    * of_types (type or iterable of types):
+        If used, filter results by "isinstance(<element>, of_types)".
+
+    Returns:
+        an iterator
+
+    """
     if of_types is None or isinstance(group, of_types):
         yield group
     for container in (group.dimensions,
@@ -22,18 +35,34 @@ def walk_group_objects(group, of_types=None):
 
 
 def all_variables(group):
+    """Return a list of all enclosed :class:`~ncobj.Variable` definitions."""
     return list(walk_group_objects(group, Variable))
 
 
 def all_dimensions(group):
+    """Return a list of all enclosed :class:`~ncobj.Dimension` definitions."""
     return list(walk_group_objects(group, Dimension))
 
 
 def all_groups(group):
+    """Return a list of all sub-groups."""
     return list(walk_group_objects(group, Group))
 
 
 def group_path(ncobj):
+    """
+    Return a string representing the absolute location of the element relative
+    to the root group.
+
+    Args:
+
+    * ncobj (:class:`~ncobj.NcObj`)
+        The element to locate.
+
+    For example:
+        group_path(<var>) --> "/group_A/var_X"
+
+    """
     path = ncobj.name
     if ncobj.container and isinstance(ncobj.container.in_element, Group):
         path = group_path(ncobj.container.in_element) + '/' + path
@@ -45,10 +74,10 @@ def _find_definition(group, name, container_prop_name):
     Search groups upward for a definition by name and container property name.
 
     Args:
-    * group (:class:`Group`):
+    * group (:class:`~ncobj.Group`):
         The group to start searching at.
 
-    * name (:class:`NcObj`):
+    * name (:class:`~ncobj.NcObj`):
         The name the element should have.
 
     * container_prop_name:
@@ -77,10 +106,11 @@ def find_named_definition(group, name, element_type):
     Search groups upward for a definition by name and element type.
 
     Args:
-    * group (:class:`Group`):
+
+    * group (:class:`~ncobj.Group`):
         The group to start searching at.
 
-    * name (:class:`NcObj`):
+    * name (:class:`~ncobj.NcObj`):
         The name the element should have.
 
     * element_type (type):
@@ -102,14 +132,17 @@ def find_named_definition(group, name, element_type):
 
 
 class DimensionConflictError(Exception):
+    """Exception raised when dimension information is invalid."""
     pass
 
 
 class NameConflictError(Exception):
+    """Exception raised when names of components coincide."""
     pass
 
 
 class IncompleteStructureError(Exception):
+    """Exception raised when a required dimension definition is missing."""
     def __init__(self, var, dim):
         msg = ('Variable "{}" needs a dimension "{}", for which no definition '
                'exists in the group structure.'.format(
@@ -150,7 +183,7 @@ def add_missing_dims(group):
 
     A missing dimension is one referred to by a variable in 'group' or its
     subgroups, for which no definition can be located by
-    :function:`find_named_definition`.  The new ones are created in 'group'.
+    :func:`find_named_definition`.  The new ones are created in 'group'.
 
     Returns:
         A list of the definitions created for missing dimensions.
@@ -269,7 +302,7 @@ def check_consistent_dims_usage(group):
     .. note::
 
         Can only be used on groups with no missing dimensions, as described for
-        :function:`has_no_missing_dimensions`.
+        :func:`has_no_missing_dimensions`.
         Otherwise a :class:`IncompleteStructureError` will be raised.
 
     """
@@ -311,7 +344,7 @@ def complete(group):
 
     Dimension definitions are made consistent with the data and dimension
     information of all variables that reference them.  If this is not possible,
-    as decribed for :function:`check_consistent_dims_usage`, a
+    as decribed for :func:`check_consistent_dims_usage`, a
     :class:`DimensionConflictError` is raised.
     A dimension definition will also be made 'unlimited' if any of the
     references requires it.
@@ -320,7 +353,7 @@ def complete(group):
 
         A :class:`NameConflictError` can also result if components have
         conflicting names, as described for
-        :function:`check_group_name_clashes`.
+        :func:`check_group_name_clashes`.
 
     """
     # NOTE: make dimensions unlimited when required, and also allow these to be
