@@ -3,6 +3,7 @@ import unittest as tests
 
 import mock
 import ncobj as nco
+from ncobj.shorts import og, od, ov, oa
 
 from ncobj.grouping import walk_group_objects
 from ncobj.grouping import all_variables, all_dimensions, all_groups
@@ -23,27 +24,6 @@ class _BaseTest_Grouping(tests.TestCase):
     def check_all_in_str(self, string, matches):
         for match in matches:
             self.assertIn(match, string)
-
-
-def og(name, aa=None, dd=None, vv=None, gg=None):
-    return nco.Group(name,
-                     dimensions=dd,
-                     variables=vv,
-                     attributes=aa,
-                     sub_groups=gg)
-
-
-def oa(name, v=None):
-    return nco.Attribute(name, value=v)
-
-
-def od(name, l=None, u=False, data=None):
-    return nco.Dimension(name, length=l, unlimited=u)
-
-
-def ov(name, dd=None, aa=None, data=None):
-    return nco.Variable(name, dimensions=dd, attributes=aa,
-                        dtype=None, data=data)
 
 
 def _mockdata(shape):

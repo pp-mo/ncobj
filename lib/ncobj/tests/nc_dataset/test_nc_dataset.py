@@ -8,7 +8,7 @@ import os.path
 
 
 import ncobj.grouping as ncg
-from ncobj.tests.grouping.test_grouping import og, ov, od, oa
+from ncobj.shorts import og, od, ov, oa
 
 
 from ncobj.nc_dataset import read, write
