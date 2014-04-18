@@ -31,7 +31,7 @@ from abc import ABCMeta, abstractmethod, abstractproperty
 import numpy as np
 
 
-__version__ = '0.1.1'
+__version__ = '0.2.x'
 
 
 class NcObj(object):
