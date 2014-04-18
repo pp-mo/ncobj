@@ -58,8 +58,13 @@ possible alternative create-defs-locally:
         complete(group)
     * or maybe just document as an idea ?
 
-MOTIVATION + USECASE IDEAS
-    see - http://marqh.github.io/ncContainers/build/html/index.html
-
 * either support datatypes, or remove Variable.dtype
+
 * allow nc_dataset.read to open a netCDF4 dataset + close when done.
+    * N.B. may link into whole 'change the existing' area
+
+
+MOTIVATION + USECASE IDEAS
+==========================
+* see - http://marqh.github.io/ncContainers/build/html/index.html
+

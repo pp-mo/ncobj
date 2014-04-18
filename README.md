@@ -6,9 +6,11 @@ programmatic handling of NetCDF files.
 Enables quick+easy copying of data from one netCDF4 file to another, with
 arbitrary changes.  Intended scope similar to NCO commands.
 
+Latest web docs : http://pp-mo.github.io/build/html/ncobj.html
+
 Current Status
 --------------
-VERSION 0.1 : 2014-04-17
+VERSION "0.1.1" : 2014-04-17
  * Core classes written
    * Basic unit tests written + working.
    * Some integration tests, currently disabled.
@@ -17,6 +19,7 @@ VERSION 0.1 : 2014-04-17
    * Integration tests wanted.
  * Basic file i/o working (ncobj.nc_dataset)
    * some simple tests
+ * Documentation with Sphinx
  * Non-working usecase examples demonstrate intended coding forms + api.
 
 Further motivation and ideas :

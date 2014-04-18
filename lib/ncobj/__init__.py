@@ -31,11 +31,15 @@ from abc import ABCMeta, abstractmethod, abstractproperty
 import numpy as np
 
 
-__version__ = '0.1'
+__version__ = '0.1.1'
 
 
 class NcObj(object):
-    """A generic (abstract) object representing a named element, aka a NetCDF "component"."""
+    """
+    A generic (abstract) object representing a named element, aka a NetCDF
+    "component".
+
+    """
     __metaclass__ = ABCMeta
 
     @abstractmethod
