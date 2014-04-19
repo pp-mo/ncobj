@@ -178,14 +178,6 @@ class Test_check_group_name_clashes(_BaseTest_Grouping):
         check_names(g)
         self.assertFalse(group_is_tagged(g))
 
-    def test_var_vs_dim(self):
-        g = og('root', vv=[ov('tst1')], dd=[od('tst1')])
-        with self.assertRaises(NameConflictError) as err_context:
-            check_names(g)
-        msg = err_context.exception.message
-        self.check_all_in_str(msg, ['group "root"', 'both',
-                                    'variable', 'dimension', 'tst1'])
-
     def test_var_vs_grp(self):
         g = og('root', vv=[ov('tst1')], gg=[og('tst1')])
         with self.assertRaises(NameConflictError) as err_context:
@@ -193,14 +185,6 @@ class Test_check_group_name_clashes(_BaseTest_Grouping):
         msg = err_context.exception.message
         self.check_all_in_str(msg, ['group "root"', 'both',
                                     'variable', 'group', 'tst1'])
-
-    def test_dim_vs_grp(self):
-        g = og('root', dd=[od('tst1')], gg=[og('tst1')])
-        with self.assertRaises(NameConflictError) as err_context:
-            check_names(g)
-        msg = err_context.exception.message
-        self.check_all_in_str(msg, ['group "root"', 'both',
-                                    'dimension', 'group', 'tst1'])
 
     def test_subgroup_okay(self):
         g = og('root', vv=[ov('test_var')],

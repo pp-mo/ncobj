@@ -159,22 +159,19 @@ def check_group_name_clashes(group):
 
     .. note::
 
-        Name collisions can occur between variables, dimensions and subgroups:
+        Name collisions can occur between variables, subgroups and user-types:
         In NetCDF, these components share a namespace within each group.
 
     """
-    vv, dd, gg = ('variable', 'dimension', 'group')
     for grp in all_groups(group):
-        for type1, type2 in ((vv, dd), (vv, gg), (dd, gg)):
-            names1 = getattr(group, type1+'s').names()
-            names2 = getattr(group, type2+'s').names()
-            clashes = set(names1) & set(names2)
-            if clashes:
-                badname = list(clashes)[0]
-                raise NameConflictError('group "{}" contains both a {} and a '
-                                        '{} named {}.'.format(
-                                            group_path(grp), type1, type2,
-                                            badname))
+        var_names = set(group.variables.names())
+        group_names = set(group.groups.names())
+        clashes = var_names & group_names
+        if clashes:
+            badname = list(clashes)[0]
+            raise NameConflictError('group "{}" contains both a variable and '
+                                    'a subgroup named {}.'.format(
+                                        group_path(grp), badname))
 
 
 def add_missing_dims(group):
