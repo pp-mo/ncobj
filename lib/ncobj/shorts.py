@@ -14,7 +14,7 @@ def oa(name, v=None):
     return nco.Attribute(name, value=v)
 
 
-def od(name, l=None, u=False, data=None):
+def od(name, l=None, u=False):
     return nco.Dimension(name, length=l, unlimited=u)
 
 
