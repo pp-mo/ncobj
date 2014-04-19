@@ -370,11 +370,22 @@ class NcobjContainer(object):
         """
         self._setitem_ref_or_copy(name, element, detached_copy=True)
 
-    def pop(self, *args, **kwargs):
-        """Remove and return the named element."""
-        # NOTE: *ALL* element-removing operations come through here.
-        result = self._content.pop(*args, **kwargs)
-        result._container = None
+    def pop(self, name, *args):
+        """Remove and return the named element, or return default."""
+        if len(args) > 1:
+            # behaviour of "pop" is slightly odd : can't use 'default=None'
+            raise TypeError('pop expected at most 2 arguments, got {}'.format(
+                1 + len(args)))
+        if name in self._content:
+            # Extract and detach.
+            result = self._content.pop(name)
+            result._container = None
+        else:
+            # Return supplied default, or fail if none given.
+            if len(args):
+                result = args[0]
+            else:
+                raise KeyError(name)
         return result
 
     def __delitem__(self, name):
@@ -527,6 +538,9 @@ class NcGroupsContainer(NcobjContainer):
         if isinstance(in_group, Group):
             self[name]._parent = in_group
 
-    def pop(self, name):
-        NcobjContainer.pop(self, name)
-        self[name]._parent = None
+    def pop(self, name, *args):
+        extract_ok = name in self._content
+        result = NcobjContainer.pop(self, name, *args)
+        if extract_ok:
+            result._parent = None
+        return result

@@ -308,7 +308,9 @@ class Test_NcobjContainer(tests.TestCase):
         with self.assertRaises(KeyError) as err_context:
             _ = self.con.remove(self.content_a)
         self.assertEqual(err_context.exception.args, (self.content_a,))
-        result = self.con_nonempty.pop('A')
+        self.assertIn(self.content_a, self.con_nonempty)
+        result = self.con_nonempty.remove(self.content_a)
+        self.assertNotIn(self.content_a, self.con_nonempty)
         self.assertEqual(result, self.content_a)
         self.assertEqual(sorted(self.con_nonempty.names()), ['B'])
 
