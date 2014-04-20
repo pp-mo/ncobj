@@ -243,6 +243,14 @@ class Test_NcobjContainer(tests.TestCase):
         self.assertEqual(con_a.container, self.con)
         self.assertIsNone(self.content_a.container)
 
+    def test_setitem_reference(self):
+        # Check this one does not copy, and trust that is the only difference.
+        self.assertNotIn(self.content_a, self.con)
+        self.con.setitem_reference('A', self.content_a)
+        self.assertIn(self.content_a, self.con)
+        self.assertIs(self.con['A'], self.content_a)
+        self.assertIs(self.content_a.container, self.con)
+
     def test__setitem__rename(self):
         self.assertNotEqual(self.content_a.name, 'Z')
         self.assertTrue('Z' not in self.con.names())
@@ -294,9 +302,14 @@ class Test_NcobjContainer(tests.TestCase):
         self.assertNotIn(con_a, self.con_nonempty)
         self.assertIsNone(con_a.container)
 
-    def test_pop__default(self):
+    def test_pop__absent_default(self):
         odd_value = mock.sentinel.unique_val
         self.assertIs(self.con.pop('A', odd_value), odd_value)
+
+    def test_pop__absent_nodefault(self):
+        with self.assertRaises(KeyError) as err_context:
+            self.con.pop('A')
+        self.assertEqual(err_context.exception.args, ('A',))
 
     def test__delitem__(self):
         with self.assertRaises(KeyError):
@@ -340,6 +353,93 @@ class Test_NcobjContainer(tests.TestCase):
         self.assertEqual(con_a.name, 'Q')
         self.assertEqual(con_a.container, self.con_nonempty)
         self.assertEqual(sorted(self.con_nonempty.names()), ['B', 'Q'])
+
+
+class Test_NcGroupContainer(tests.TestCase):
+    # extra tests for groups container, which adds parent-group control
+    def check_setitem_ref_or_copy(self, make_copy, container_in_group):
+        groups_container = ncobj.NcGroupsContainer()
+        if container_in_group:
+            mock_in_group = mock.Mock(spec=ncobj.Group)
+            groups_container._in_element = mock_in_group
+        element_a = mock.Mock(spec=ncobj.Group)
+        element_a.name = 'A'
+        element_a._parent = None  # mock spec= doesn't provide this
+        element_a2 = mock.Mock(spec=ncobj.Group)
+        element_a2.name = 'A'
+        element_a.detached_copy = mock.Mock(return_value=element_a2)
+        element_a2._parent = None  # mock spec= doesn't provide this
+
+        groups_container._setitem_ref_or_copy('A', element_a,
+                                              detached_copy=make_copy)
+
+        if make_copy:
+            element_a.detached_copy.assert_called_once_with()
+            self.assertIs(groups_container['A'], element_a2)
+        else:
+            self.assertFalse(element_a.detached_copy.called)
+            self.assertIs(groups_container['A'], element_a)
+        if not container_in_group:
+            self.assertIs(groups_container['A']._parent, None)
+        else:
+            self.assertIs(groups_container['A']._parent, mock_in_group)
+
+    def test__setitem_ref_or_copy__copy_notdefs(self):
+        self.check_setitem_ref_or_copy(make_copy=True,
+                                       container_in_group=False)
+
+    def test__setitem_ref_or_copy__copy_isdefs(self):
+        self.check_setitem_ref_or_copy(make_copy=True,
+                                       container_in_group=True)
+
+    def test__setitem_ref_or_copy__nocopy_notdefs(self):
+        self.check_setitem_ref_or_copy(make_copy=False,
+                                       container_in_group=False)
+
+    def test__setitem_ref_or_copy__nocopy_isdefs(self):
+        self.check_setitem_ref_or_copy(make_copy=False,
+                                       container_in_group=True)
+
+    def test_pop__present(self):
+        element_a = mock.Mock(spec=ncobj.Group)
+        element_a.name = 'A'
+        element_a2 = mock.Mock(spec=ncobj.Group)
+        element_a2.name = 'A'
+        element_a.detached_copy = mock.Mock(return_value=element_a2)
+        groups_container = ncobj.NcGroupsContainer([element_a])
+        element_a.detached_copy.assert_called_once_with()
+        self.assertIs(groups_container['A'], element_a2)
+        self.assertNotIn(element_a, groups_container)
+        self.assertIn(element_a2, groups_container)
+        self.assertIs(element_a2._container, groups_container)
+        result = groups_container.pop('A')
+        self.assertIs(result, element_a2)
+        self.assertNotIn(element_a2, groups_container)
+        self.assertIs(element_a2._container, None)
+
+    def test_pop__absent_default(self):
+        element_a = mock.Mock(spec=ncobj.Group)
+        element_a.name = 'A'
+        element_a2 = mock.Mock(spec=ncobj.Group)
+        element_a2.name = 'A'
+        element_a.detached_copy = mock.Mock(return_value=element_a2)
+        groups_container = ncobj.NcGroupsContainer([element_a])
+        self.assertEqual(groups_container.names(), ['A'])
+        default = mock.sentinel.not_present
+        result = groups_container.pop('B', default)
+        self.assertIs(result, default)
+
+    def test_pop__absent_nodefault(self):
+        element_a = mock.Mock(spec=ncobj.Group)
+        element_a.name = 'A'
+        element_a2 = mock.Mock(spec=ncobj.Group)
+        element_a2.name = 'A'
+        element_a.detached_copy = mock.Mock(return_value=element_a2)
+        groups_container = ncobj.NcGroupsContainer([element_a])
+        self.assertEqual(groups_container.names(), ['A'])
+        with self.assertRaises(KeyError) as err_context:
+            result = groups_container.pop('B')
+        self.assertEqual(err_context.exception.args, ('B',))
 
 
 class Test_Group(tests.TestCase, GenericNcObjTestMixin):
