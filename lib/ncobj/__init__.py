@@ -280,8 +280,7 @@ class NcobjContainer(object):
         self._in_element = in_element
         self._content = {}
         if contents:
-            for element in contents:
-                self.__setitem__(element.name, element.detached_copy())
+            self.add_allof(contents)
 
     @property
     def in_element(self):
