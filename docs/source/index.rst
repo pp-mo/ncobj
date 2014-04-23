@@ -3,16 +3,15 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to ncobj's documentation!
-=================================
+Documention for 'ncobj'
+=======================
 
-Contents:
+A Python object representation of NetCDF4 data, allowing more flexible
+programmatic handling of NetCDF files.
+Enables quick+easy copying of data from one netCDF4 file to another, with
+arbitrary changes.  Intended scope similar to NCO commands.
 
-.. toctree::
-   :maxdepth: 2
-
-    :ref:`ncobj`
-
+On GitHub : http://https://github.com/pp-mo/ncobj
 
 Indices and tables
 ==================
