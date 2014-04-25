@@ -89,25 +89,43 @@ def read(dataset):
     return _make_group('', dataset)
 
 
+DEBUG_WRITES = False
+
+
 def _save_nc_dim(ds, dim):
+    if DEBUG_WRITES:
+        print "Writing      dim: (in {}) {}".format(ds.path, dim.name)
     ds.createDimension(dim.name, 0 if dim.unlimited else dim.length)
 
 
 def _save_nc_var(ds, var):
+    if DEBUG_WRITES:
+        print "Writing      var: (in {}) {}".format(ds.path, var.name)
     ds_var = ds.createVariable(var.name,
                                var.data.dtype,   # NB ?future?
                                dimensions=[dim.name for dim in var.dimensions])
     ds_var[...] = var.data[...]
     for attr in var.attributes:
-        _save_nc_attr(ds_var, attr)
+        _save_var_attr(ds_var, attr)
 
 
 def _save_nc_attr(ds, attr):
+    if DEBUG_WRITES:
+        print "Writing     attr: (in {}) {}".format(ds.path, attr.name)
     ds.setncattr(attr.name, attr.value)
+
+
+def _save_var_attr(ds_var, attr):
+    if DEBUG_WRITES:
+        print "Writing var-attr: (in {}) {}".format(ds_var._name, attr.name)
+    ds_var.setncattr(attr.name, attr.value)
 
 
 def _save_group(ds, group):
     # order: dimensions, variables, attributes, sub-groups
+    if DEBUG_WRITES:
+        parent_path = getattr(ds.parent, 'path', '')
+        print "Writing    group: (in {}) {}".format(parent_path, group.name)
     for dim in group.dimensions:
         _save_nc_dim(ds, dim)
     for var in group.variables:
@@ -115,7 +133,7 @@ def _save_group(ds, group):
     for attr in group.attributes:
         _save_nc_attr(ds, attr)
     for subgroup in group.groups:
-        ds_subgroup = ds.createGroup(group.name)
+        ds_subgroup = ds.createGroup(subgroup.name)
         _save_group(ds_subgroup, subgroup)
 
 
