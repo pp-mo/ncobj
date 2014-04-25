@@ -1,3 +1,8 @@
+MOTIVATION + USECASE IDEAS
+==========================
+* see - http://marqh.github.io/ncContainers/build/html/index.html
+
+
 MORE To-dos:
 ============
 
@@ -28,8 +33,8 @@ Usecase examples:
     demo to point out *problems* of automatic dimension creation/matching ??
 
 
-BUGS + CHANGES
-==============
+CHANGES
+=======
 * Variable.dimensions can't be accessed by name, only by index
     * that's sort-of ok, as it can occur more than once ?
     * in principle, at present, could even be two different dims of same name
@@ -64,7 +69,6 @@ possible alternative create-defs-locally:
     * N.B. may link into whole 'change the existing' area
 
 
-MOTIVATION + USECASE IDEAS
-==========================
-* see - http://marqh.github.io/ncContainers/build/html/index.html
-
+BUGS
+====
+examples.eg_allinfo currently getting creation of subgroup dimension wrong.
