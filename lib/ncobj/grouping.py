@@ -124,6 +124,8 @@ def find_named_definition(group, name, element_type):
     # Work out which Group property to search for this type of element.
     if issubclass(element_type, Dimension):
         container_prop_name = 'dimensions'
+    elif issubclass(element_type, Variable):
+        container_prop_name = 'variables'
     else:
         raise ValueError('type "{}" is not recognised, or not supported for '
                          'definition lookup'.format(element_type))

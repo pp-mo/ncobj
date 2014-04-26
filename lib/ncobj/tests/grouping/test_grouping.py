@@ -119,9 +119,9 @@ class Test_find_named_definition(_BaseTest_Grouping):
     def test_type_unsupported(self):
         g = og('')
         with self.assertRaises(ValueError) as err_context:
-            fnd(g, 'name', nco.Variable)
+            fnd(g, 'name', nco.Group)
         msg = err_context.exception.message
-        self.check_all_in_str(msg, ['ncobj.Variable',
+        self.check_all_in_str(msg, ['ncobj.Group',
                                     'not recognised',
                                     'or not supported'])
 
