@@ -319,6 +319,9 @@ def check_consistent_dims_usage(group):
                 raise DimensionConflictError(
                     'No length can be deduced for dimension "{}".'.format(
                         group_path(dim)))
+            # Complain if referencing variables disagree about the length.
+            # NOTE: the dimension _itself_ may have a different length, this is
+            # overridden by any length in the variables
             if len(vars_dims) > 1:
                 var1, dim1 = vars_dims[0]
                 for (varx, dimx) in vars_dims[1:]:
@@ -375,8 +378,13 @@ def complete(group):
             # Can easily prune these if wanted.
             dims = [vardata.dim for vardata in dim._varsdata]
             lengths = [dimx.length for dimx in dims if dimx.length is not None]
-            dim.length = lengths[0] if lengths else None
-            dim.unlimited = any(dimx.unlimited for dimx in dims)
+            # Set length from variables, if any (else what it says in the dim).
+            if lengths:
+                # N.B. we already checked that all these lengths are the same.
+                dim.length = lengths[0]
+            # Likewise for 'unlimited'
+            if any(dimx.unlimited for dimx in dims):
+                dim.unlimited = True
 
     # Connect all variables' dims directly to dimension definitions.
     # (N.B. effectively the opposite of the 'detached' concept).

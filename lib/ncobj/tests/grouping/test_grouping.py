@@ -442,9 +442,20 @@ class Test_has_no_missing_dims(_BaseTest_Grouping):
 
 
 class Test_complete(_BaseTest_Grouping):
+    def do_complete(self, group):
+        # complete a group, and check that re-calling has no effect
+#        print 'BEFORE:\n', group
+        complete(group)
+        self.assertTrue(has_no_missing_dims(group))
+#        print 'FIRSTPASS:\n', group
+        firstpass_result = group.detached_copy()
+        complete(group)
+#        print 'REDONE:\n', group
+        self.assertEqual(group, firstpass_result)
+
     def test_empty(self):
         g = og('')
-        complete(g)
+        self.do_complete(g)
         self.assertEqual(all_dimensions(g), [])
 
     def test_nomissing(self):
@@ -454,23 +465,36 @@ class Test_complete(_BaseTest_Grouping):
         test_dim = g.dimensions['x']
         self.assertEqual(all_dimensions(g), [test_dim])
         self.assertIsNot(g.variables['v'].dimensions[0], test_dim)
-        complete(g)
+        self.do_complete(g)
         self.assertEqual(all_dimensions(g), [test_dim])
         self.assertIs(g.variables['v'].dimensions[0], test_dim)
 
     def test_missing(self):
         g = og('', vv=[ov('v', dd=[od('x', 7)])])
         self.assertEqual(all_dimensions(g), [])
-        complete(g)
+        self.do_complete(g)
         self.assertEqual(all_dimensions(g), [od('x', 7)])
         self.assertIs(g.variables['v'].dimensions[0], g.dimensions['x'])
+
+    def test_length_in_definition(self):
+        g = og('',
+               dd=[od('x', 7)],
+               vv=[ov('v', dd=[od('x')])])
+        x_def = g.dimensions['x']
+        self.assertEqual(x_def, od('x', 7))
+        self.assertEqual(all_dimensions(g), [x_def])
+        self.assertIsNot(g.variables['v'].dimensions[0], x_def)
+        self.do_complete(g)
+        self.assertEqual(all_dimensions(g), [x_def])
+        self.assertIs(g.variables['v'].dimensions[0], x_def)
+        self.assertEqual(x_def, od('x', 7))
 
     def test_mixture(self):
         g = og('',
                dd=[od('x', 1)],
                vv=[ov('v', dd=[od('y', 3)])])
         self.assertEqual(all_dimensions(g), [od('x', 1)])
-        complete(g)
+        self.do_complete(g)
         self.assertEqual(len(g.dimensions), 2)
         self.assertIn(od('x', 1), g.dimensions)
         self.assertIn(od('y', 3), g.dimensions)
@@ -480,7 +504,7 @@ class Test_complete(_BaseTest_Grouping):
         g = og('', vv=[ov('v1', dd=[od('x', 1), od('y')]),
                        ov('v2', dd=[od('y', 2), od('z', 3)])])
         self.assertEqual(all_dimensions(g), [])
-        complete(g)
+        self.do_complete(g)
         self.assertEqual(len(g.dimensions), 3)
         self.assertIn(od('x', 1), g.dimensions)
         self.assertIn(od('y', 2), g.dimensions)
@@ -495,7 +519,7 @@ class Test_complete(_BaseTest_Grouping):
     def test_length(self):
         g = og('', vv=[ov('v', dd=[od('x', 2)])])
         self.assertEqual(all_dimensions(g), [])
-        complete(g)
+        self.do_complete(g)
         self.assertNotEqual(list(g.dimensions), [od('x')])
         self.assertEqual(list(g.dimensions), [od('x', 2)])
 
@@ -504,7 +528,7 @@ class Test_complete(_BaseTest_Grouping):
                        ov('v2', dd=[od('x', 2)])])
         self.assertEqual(all_dimensions(g), [])
         self.assertEqual(g.variables['v2'].dimensions[0], od('x', 2))
-        complete(g)
+        self.do_complete(g)
         self.assertNotEqual(g.variables['v2'].dimensions[0], od('x', 2))
         self.assertEqual(list(g.dimensions), [od('x', 2, u=True)])
         test_dim = g.dimensions['x']
@@ -515,12 +539,12 @@ class Test_complete(_BaseTest_Grouping):
         g = og('', vv=[ov('v1', dd=[od('x', 2)]),
                        ov('v2', dd=[od('x', 3)])])
         with self.assertRaises(DimensionConflictError):
-            complete(g)
+            self.do_complete(g)
 
     def test_subgroup(self):
         g = og('',
                gg=[og('subgroup', vv=[ov('v1', dd=[od('y', 2)])])])
-        complete(g)
+        self.do_complete(g)
         self.assertEqual(len(g.dimensions), 1)
         self.assertEqual(list(g.dimensions), [od('y', 2)])
         self.assertIs(g.groups['subgroup'].variables['v1'].dimensions[0],
@@ -534,7 +558,7 @@ class Test_complete(_BaseTest_Grouping):
         self.assertEqual(list(g.dimensions), [])
         v1 = g.variables['v1']
         v2 = g.groups['subgroup'].variables['v1']
-        complete(g)
+        self.do_complete(g)
         self.assertEqual(len(g.dimensions), 1)
         self.assertEqual(list(g.dimensions), [od('q', 2)])
         test_dim = g.dimensions['q']
@@ -558,7 +582,7 @@ class Test_complete(_BaseTest_Grouping):
         self.assertNotEqual(var_dim_q, grp_dim_q)
         self.assertEqual(var_dim_q, q_len)
         self.assertEqual(grp_dim_q, q_nolen)
-        complete(g)
+        self.do_complete(g)
         self.assertIs(g.variables['v1'].dimensions[0], fixed_dim_x)
         var_dim_q = g.groups['subgroup'].variables['v1'].dimensions[0]
         grp_dim_q = g.dimensions['q']
@@ -569,7 +593,7 @@ class Test_complete(_BaseTest_Grouping):
     def test_simple_data(self):
         g = og('', vv=[ov('v', dd=[od('y'), od('x')],
                           data=_mockdata((15, 20)))])
-        complete(g)
+        self.do_complete(g)
         self.assertEqual(len(g.dimensions), 2)
         self.assertEqual(g.dimensions['x'], od('x', 20))
         self.assertEqual(g.dimensions['y'], od('y', 15))
