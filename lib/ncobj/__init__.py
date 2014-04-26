@@ -75,6 +75,13 @@ class NcObj(object):
         """Return whether this element is a definition within a group."""
         return self.container and self.container.is_definitions()
 
+    def definitions_group(self):
+        """Return the Group in which this element is a definition, or fail."""
+        if not self.is_definition():
+            raise ValueError('element {} is not a definition: Its container '
+                             'is {}.'.format(self, self._container))
+        return self.container.in_element
+
     @property
     def name(self):
         """Name of the element."""

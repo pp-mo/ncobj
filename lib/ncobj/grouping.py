@@ -197,9 +197,10 @@ def add_missing_dims(group):
     # Find or create definitions for all dimensions used by all variables.
     new_created_dims = []
     for var in all_variables(group):
+        var_group = var.definitions_group()
         for dim in var.dimensions:
             # Locate existing dimension in structure, if any.
-            dim_def = find_named_definition(group, dim.name, Dimension)
+            dim_def = find_named_definition(var_group, dim.name, Dimension)
             if dim_def is None:
                 # Create a new top-level dimension definition.
                 group.dimensions.add(dim)
@@ -228,9 +229,9 @@ def has_no_missing_dims(group, fail_if_not=False):
 
     """
     for var in all_variables(group):
+        var_group = var.definitions_group()
         for dim in var.dimensions:
-            if not find_named_definition(var.container.in_element, dim.name,
-                                         Dimension):
+            if not find_named_definition(var_group, dim.name, Dimension):
                 if fail_if_not:
                     raise IncompleteStructureError(var, dim)
                 return False
@@ -251,6 +252,7 @@ def _add_dims_varsdata(group):
             dim._varsdata = []
         # Scan all variables and record usage against dimensions referenced.
         for var in all_variables(group):
+            var_group = var.definitions_group()
             if not hasattr(var.data, 'shape'):
                 # Take dims as given (lengths etc. may be unspecified)
                 var_dims = var.dimensions
@@ -269,8 +271,7 @@ def _add_dims_varsdata(group):
                             for i_dim, dim in enumerate(var.dimensions)]
             for dim in var_dims:
                 # Locate the matching dimension definition in the structure.
-                dim_def = find_named_definition(var.container.in_element,
-                                                dim.name, Dimension)
+                dim_def = find_named_definition(var_group, dim.name, Dimension)
                 assert dim_def is not None
                 # Add the variable with its dimension usage.
                 dim_def._varsdata.append(_DimVarData(var, dim))
@@ -389,7 +390,8 @@ def complete(group):
     # Connect all variables' dims directly to dimension definitions.
     # (N.B. effectively the opposite of the 'detached' concept).
     for var in all_variables(group):
-        var.dimensions = [find_named_definition(group, dim.name, Dimension)
+        var_group = var.definitions_group()
+        var.dimensions = [find_named_definition(var_group, dim.name, Dimension)
                           for dim in var.dimensions]
 
     # Tidy up after.

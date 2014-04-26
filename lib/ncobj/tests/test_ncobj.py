@@ -49,6 +49,27 @@ class Test_NcObj(tests.TestCase):
         self.mock_container.is_definitions = mock.Mock(return_value=testval)
         self.assertEqual(self.nco_contained.is_definition(), testval)
 
+    def test_definitions_group__isolated(self):
+        with self.assertRaises(ValueError) as err_context:
+            self.nco.definitions_group()
+        msg = err_context.exception.message
+        self.assertIn('not a definition', msg)
+        self.assertIn('container is None', msg)
+
+    def test_definitions_group__contained_nongroup(self):
+        self.mock_container.is_definitions = mock.Mock(return_value=False)
+        with self.assertRaises(ValueError) as err_context:
+            self.nco_contained.definitions_group()
+        msg = err_context.exception.message
+        self.assertIn('not a definition', msg)
+        self.assertIn('container is <Mock', msg)
+
+    def test_definitions_group__contained_ingroup(self):
+        self.mock_container.is_definitions = mock.Mock(return_value=True)
+        fake_group = mock.sentinel.fake_group_el
+        self.mock_container.in_element = fake_group
+        self.assertEqual(self.nco_contained.definitions_group(), fake_group)
+
     def test_rename__isolated(self):
         self.nco.rename('newname')
         self.assertEqual(self.nco.name, 'newname')

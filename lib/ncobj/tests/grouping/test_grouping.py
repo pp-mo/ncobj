@@ -401,6 +401,14 @@ class Test_add_missing_dims(_BaseTest_Grouping):
         self.assertEqual(len(g.dimensions), 1)
         self.assertEqual(g.dimensions.names(), ['q'])
 
+    def test_group_contained(self):
+        g = og('',
+               gg=[og('subgroup', dd=[od('x', 4)],
+                      vv=[ov('sv1', dd=[od('x'), od('y')])])])
+        add_missing_dims(g)
+        self.assertEqual(list(g.dimensions), [od('y')])
+        self.assertEqual(list(g.groups['subgroup'].dimensions), [od('x', 4)])
+
 
 class Test_has_no_missing_dims(_BaseTest_Grouping):
     def test_empty(self):
@@ -590,6 +598,19 @@ class Test_complete(_BaseTest_Grouping):
         self.assertNotEqual(var_dim_q, q_nolen)
         self.assertEqual(var_dim_q, q_len)
 
+    def test_partial_grouped(self):
+        # Build a group with one dimension to be found in the subgroup.
+        g = og('',
+               gg=[og('subgroup',
+                      dd=[od('x', 4)],
+                      vv=[ov('subvar_1', dd=[od('x')]),
+                          ov('subvar_2', dd=[od('z', 3), od('x')])])])
+        dim_x_def = g.groups['subgroup'].dimensions['x']
+        self.do_complete(g)
+        self.assertEqual(list(g.dimensions), [od('z', 3)])
+        self.assertEqual(list(g.groups['subgroup'].dimensions), [dim_x_def])
+        self.assertIs(g.groups['subgroup'].dimensions['x'], dim_x_def)
+        
     def test_simple_data(self):
         g = og('', vv=[ov('v', dd=[od('y'), od('x')],
                           data=_mockdata((15, 20)))])
