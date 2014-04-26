@@ -448,7 +448,9 @@ class Test_complete(_BaseTest_Grouping):
         self.assertEqual(all_dimensions(g), [])
 
     def test_nomissing(self):
-        g = og('', dd=[od('x', 3)], vv=[ov('v', dd=[od('x')])])
+        g = og('',
+               dd=[od('x', 3)],
+               vv=[ov('v', dd=[od('x')])])
         test_dim = g.dimensions['x']
         self.assertEqual(all_dimensions(g), [test_dim])
         self.assertIsNot(g.variables['v'].dimensions[0], test_dim)
@@ -464,7 +466,9 @@ class Test_complete(_BaseTest_Grouping):
         self.assertIs(g.variables['v'].dimensions[0], g.dimensions['x'])
 
     def test_mixture(self):
-        g = og('', dd=[od('x', 1)], vv=[ov('v', dd=[od('y', 3)])])
+        g = og('',
+               dd=[od('x', 1)],
+               vv=[ov('v', dd=[od('y', 3)])])
         self.assertEqual(all_dimensions(g), [od('x', 1)])
         complete(g)
         self.assertEqual(len(g.dimensions), 2)
@@ -523,8 +527,10 @@ class Test_complete(_BaseTest_Grouping):
                       g.dimensions['y'])
 
     def test_subgroup_mixed(self):
-        g = og('', vv=[ov('v1', dd=[od('q')])],
-               gg=[og('subgroup', vv=[ov('v1', dd=[od('q', 2)])])])
+        g = og('',
+               vv=[ov('v1', dd=[od('q')])],
+               gg=[og('subgroup',
+                      vv=[ov('v1', dd=[od('q', 2)])])])
         self.assertEqual(list(g.dimensions), [])
         v1 = g.variables['v1']
         v2 = g.groups['subgroup'].variables['v1']
@@ -537,7 +543,9 @@ class Test_complete(_BaseTest_Grouping):
 
     def test_part_complete(self):
         # Build a group with one variable already fixed to its dimension.
-        g = og('', dd=[od('x', 3), od('q')], vv=[ov('v1')],
+        g = og('',
+               dd=[od('x', 3), od('q')],
+               vv=[ov('v1')],
                gg=[og('subgroup', vv=[ov('v1', dd=[od('q', 2)])])])
         fixed_dim_x = g.dimensions['x']
         g.variables['v1'].dimensions = [fixed_dim_x]
