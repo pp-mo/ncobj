@@ -105,8 +105,8 @@ def _save_nc_var(ds, var):
                                var.data.dtype,   # NB ?future?
                                dimensions=[dim.name for dim in var.dimensions])
     ds_var[...] = var.data[...]
-    for attr in var.attributes:
-        _save_var_attr(ds_var, attr)
+    for attr_name in sorted(var.attributes.names()):
+        _save_var_attr(ds_var, var.attributes[attr_name])
 
 
 def _save_nc_attr(ds, attr):
@@ -126,13 +126,14 @@ def _save_group(ds, group):
     if DEBUG_WRITES:
         parent_path = getattr(ds.parent, 'path', '')
         print "Writing    group: (in {}) {}".format(parent_path, group.name)
-    for dim in group.dimensions:
-        _save_nc_dim(ds, dim)
-    for var in group.variables:
-        _save_nc_var(ds, var)
-    for attr in group.attributes:
-        _save_nc_attr(ds, attr)
-    for subgroup in group.groups:
+    for dim_name in sorted(group.dimensions.names()):
+        _save_nc_dim(ds, group.dimensions[dim_name])
+    for var_name in sorted(group.variables.names()):
+        _save_nc_var(ds, group.variables[var_name])
+    for attr_name in sorted(group.attributes.names()):
+        _save_nc_attr(ds, group.attributes[attr_name])
+    for subgroup_name in sorted(group.groups.names()):
+        subgroup = group.groups[subgroup_name]
         ds_subgroup = ds.createGroup(subgroup.name)
         _save_group(ds_subgroup, subgroup)
 
