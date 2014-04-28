@@ -248,7 +248,8 @@ intersphinx_mapping = {'http://docs.python.org/': None}
 # -- Autodoc ------------------------------------------------------------------
 
 # list of packages to document
-autopackage_name = ['ncobj', 'ncobj.grouping', 'ncobj.nc_dataset']
+autopackage_name = ['ncobj', 'ncobj.grouping', 'ncobj.nc_dataset',
+                    'ncobj.cdl', 'ncobj.shorts', ]
 
 autodoc_member_order = 'bysource'
 autodoc_default_flags = ['show-inheritance', 'members', 'special-members']

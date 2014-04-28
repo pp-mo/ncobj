@@ -135,7 +135,7 @@ def _var_cdl(var):
     return result
 
 
-def group_cdl(group, at_root=True, indent=0, plus_indent=4):
+def _group_cdl(group, at_root=True, indent=0, plus_indent=4):
     next_indent = indent + plus_indent
     ind_str = '\n' + ' ' * indent
     space_id = 'netcdf' if at_root else 'group:'
@@ -163,3 +163,38 @@ def group_cdl(group, at_root=True, indent=0, plus_indent=4):
     if not at_root:
         result += ' // group {}'.format(group.name)
     return result
+
+
+def group_cdl(group, indent=0, plus_indent=4):
+    """
+    Create a CDL output string representing a :class:`ncobj.Group`.
+
+    This attempts not just to produce valid CDL, but to replicate ncdump output.
+    It will still differ in indenting, etc.
+
+    If all is well, the output of this, processed via
+    :meth:`comparable_cdl`, should match 'ncdump' output, similarly
+    processed.
+
+    Args:
+
+    * group (:class:`ncobj.Group`):
+        group to generate representation of.
+
+    * indent (int):
+        a number of spaces to prefix all output lines.
+
+    * plus_indent (int):
+        indent interval to apply to inner parts.
+
+    Returns:
+        A single string with embedded newlines.
+
+    .. note::
+
+        'group' must be "complete" in the sense of
+        :meth:`ncobj.grouping.complete`, or various errors can occur.
+
+    """
+    return _group_cdl(group, indent=indent, plus_indent=plus_indent,
+                      at_root=True)
