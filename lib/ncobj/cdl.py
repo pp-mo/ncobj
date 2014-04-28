@@ -20,12 +20,10 @@ Extra notes:
 
 """
 import numpy as np
-
+import ncobj.grouping as ncg
 
 _DEBUG_COMPARABLE = False
 _DEBUG_CDL = False
-if _DEBUG_CDL:
-    import ncobj.grouping as ncg
 
 
 def comparable_cdl(string):
@@ -66,12 +64,6 @@ def comparable_cdl(string):
     return '\n'.join(lines)
 
 
-def _var_attr_cdl(var, attr):
-    if _DEBUG_CDL:
-        print 'CDL_VAR_ATTR var({})', ncg.group_path(var)
-    return var.name + _attr_cdl(attr)
-
-
 def _attr_cdl(attr):
     val = attr.value
     if _DEBUG_CDL:
@@ -80,7 +72,9 @@ def _attr_cdl(attr):
     type_str = 'L' if isinstance(val, int) else ''
     if isinstance(val, basestring):
         val_str = '"{}"'.format(val)
-    elif hasattr(val, '__getitem__'):
+    elif not hasattr(val, '__len__') or len(val) < 2:
+        val_str = repr(val)
+    else:
         # Make a crude attempt to display arrays as numpy does ?
         # We currently don't do arrays of strings (??)
         # So strip '0's from after the dp
@@ -94,8 +88,6 @@ def _attr_cdl(attr):
                 oneval_str = '{}.{}'.format(before, after)
             val_strs.append(oneval_str)
         val_str = ', '.join(val_strs)
-    else:
-        val_str = repr(val)
     return ':{} = {}{} ;'.format(attr.name, val_str, type_str)
 
 
