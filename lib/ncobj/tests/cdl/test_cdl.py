@@ -142,7 +142,7 @@ class Test_cdl(tests.TestCase):
                                  result_str, expected_str)
         self.assertEqual(result_str, expected_str)
 
-    def test_cdl(self):
+    def test_group_cdl(self):
         g = _make_complex_group()
         result_cdl = ncdl.group_cdl(g)
         expect_cdl = _complex_cdl[:]

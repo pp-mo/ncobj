@@ -23,6 +23,9 @@ import numpy as np
 
 
 _DEBUG_COMPARABLE = False
+_DEBUG_CDL = False
+if _DEBUG_CDL:
+    import ncobj.grouping as ncg
 
 
 def comparable_cdl(string):
@@ -64,12 +67,17 @@ def comparable_cdl(string):
 
 
 def _var_attr_cdl(var, attr):
+    if _DEBUG_CDL:
+        print 'CDL_VAR_ATTR var({})', ncg.group_path(var)
     return var.name + _attr_cdl(attr)
 
 
 def _attr_cdl(attr):
-    type_str = 'L' if isinstance(attr.value, int) else ''
     val = attr.value
+    if _DEBUG_CDL:
+        print 'CDL_ATTR ({}) : type={}, val={!r}'.format(
+            ncg.group_path(attr), type(val), val)
+    type_str = 'L' if isinstance(val, int) else ''
     if isinstance(val, basestring):
         val_str = '"{}"'.format(val)
     elif hasattr(val, '__getitem__'):
@@ -92,6 +100,9 @@ def _attr_cdl(attr):
 
 
 def _dim_cdl(dim):
+    if _DEBUG_CDL:
+        print 'CDL_DIM ({}) : length={}, unlimited={}'.format(
+            ncg.group_path(dim), dim.length, dim.unlimited)
     len_str = 'UNLIMITED' if dim.unlimited else str(dim.length)
     return '{} = {} ;'.format(dim.name, len_str)
 
@@ -120,12 +131,15 @@ def _elements_string(elements, cdl_call, indent=_N_INDENT_DEFAULT):
 
 
 def _var_cdl(var):
-    type_name = _VAR_TYPE_NAMES[var.data.dtype]
     if var.dimensions:
         dims_str = '({})'.format(
             ', '.join(dim.name for dim in var.dimensions))
     else:
         dims_str = ''
+    if _DEBUG_CDL:
+        print 'CDL_VAR ({}): type={}, dims=({})'.format(
+            ncg.group_path(var), var.data.dtype, dims_str)
+    type_name = _VAR_TYPE_NAMES[var.data.dtype]
     result = '{} {}{} ;'.format(type_name, var.name, dims_str)
     if var.attributes:
         att_strs = [var.name + _attr_cdl(var.attributes[attr_name])
@@ -136,6 +150,8 @@ def _var_cdl(var):
 
 
 def _group_cdl(group, at_root=True, indent=0, plus_indent=4):
+    if _DEBUG_CDL:
+        print 'CDL_GROUP ({})'.format(ncg.group_path(group))
     next_indent = indent + plus_indent
     ind_str = '\n' + ' ' * indent
     space_id = 'netcdf' if at_root else 'group:'
@@ -155,8 +171,8 @@ def _group_cdl(group, at_root=True, indent=0, plus_indent=4):
     if group.groups:
         result += '\n'
         group_indent = indent if at_root else next_indent
-        _grp_cdl = lambda g: group_cdl(g, at_root=False,
-                                       plus_indent=plus_indent)
+        _grp_cdl = lambda g: _group_cdl(g, at_root=False,
+                                        plus_indent=plus_indent)
         result += _elements_string(group.groups, _grp_cdl, indent=group_indent)
 
     result += '\n}'
@@ -169,8 +185,8 @@ def group_cdl(group, indent=0, plus_indent=4):
     """
     Create a CDL output string representing a :class:`ncobj.Group`.
 
-    This attempts not just to produce valid CDL, but to replicate ncdump output.
-    It will still differ in indenting, etc.
+    This attempts not just to produce valid CDL, but to replicate ncdump
+    output.  It will still differ in indenting, etc.
 
     If all is well, the output of this, processed via
     :meth:`comparable_cdl`, should match 'ncdump' output, similarly
