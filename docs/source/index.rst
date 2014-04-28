@@ -11,7 +11,7 @@ programmatic handling of NetCDF files.
 Enables quick+easy copying of data from one netCDF4 file to another, with
 arbitrary changes.  Intended scope similar to NCO commands.
 
-On GitHub : http://https://github.com/pp-mo/ncobj
+On GitHub : https://github.com/pp-mo/ncobj
 
 Indices and tables
 ==================
