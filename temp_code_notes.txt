@@ -71,4 +71,7 @@ possible alternative create-defs-locally:
 
 BUGS
 ====
-examples.eg_allinfo currently getting creation of subgroup dimension wrong.
+CDL is currently failing for variables of type 'string'.
+    -- see file "test.nc" (not currently in Iris testdata or samples)
+    Need to look up numpy and netcdf usage for these possibilities.
+    Then add a testcase.
