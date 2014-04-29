@@ -98,14 +98,24 @@ def _save_nc_dim(ds, dim):
     ds.createDimension(dim.name, 0 if dim.unlimited else dim.length)
 
 
+_MAGIC_FILLVALUE_NAME = '_FillValue'
+
+
 def _save_nc_var(ds, var):
     if DEBUG_WRITES:
         print "Writing      var: (in {}) {}".format(ds.path, var.name)
+    attr_names = var.attributes.names()
+    if _MAGIC_FILLVALUE_NAME in attr_names:
+        attr_names.remove(_MAGIC_FILLVALUE_NAME)
+        fill_value = var.attributes[_MAGIC_FILLVALUE_NAME].value
+    else:
+        fill_value = None
     ds_var = ds.createVariable(var.name,
                                var.data.dtype,   # NB ?future?
-                               dimensions=[dim.name for dim in var.dimensions])
+                               dimensions=[dim.name for dim in var.dimensions],
+                               fill_value=fill_value)
     ds_var[...] = var.data[...]
-    for attr_name in sorted(var.attributes.names()):
+    for attr_name in sorted(attr_names):
         _save_var_attr(ds_var, var.attributes[attr_name])
 
 
