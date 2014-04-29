@@ -11,6 +11,16 @@ import ncobj.grouping as ncg
 from ncobj.shorts import og, od, ov, oa
 
 
+def _dummy_data(shape, dtype=None):
+    # Make a numpy array with the right shape+dtype, but no real data.
+    array = np.array(0, dtype=dtype)
+    for dim_len in shape:
+        dim_vec = np.zeros([1] * array.ndim + [dim_len]) 
+        array = array[..., None]
+        array, _ = np.broadcast_arrays(array, dim_vec)
+    return array
+
+
 def _fake_complete(group):
     """
     'Complete' a group which is lacking some dimension lengths or data types.
@@ -35,17 +45,6 @@ def _fake_complete(group):
 
     # Patch it all together.  Should work, now we have all the lengths.
     ncg.complete(group)
-
-    # Add dummy data to variables without any.
-    class _dummy_data(object):
-        def __init__(self, shape, dtype=None):
-            if dtype is None:
-                dtype = np.dtype(np.float32)
-            self.dtype = dtype
-            self.shape = tuple(shape)
-
-        def __eq__(self, other):
-            return other.shape == self.shape
 
     for var in ncg.all_variables(group):
         if var.data is None:
