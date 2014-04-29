@@ -22,10 +22,11 @@ Extra notes:
 import numpy as np
 
 
+import ncobj.grouping as ncg
+
+
 _DEBUG_COMPARABLE = False
 _DEBUG_CDL = False
-if _DEBUG_CDL:
-    import ncobj.grouping as ncg
 
 
 def comparable_cdl(string):
@@ -187,11 +188,16 @@ def group_cdl(group, indent=0, plus_indent=4):
     Create a CDL output string representing a :class:`ncobj.Group`.
 
     This attempts not just to produce valid CDL, but to replicate ncdump
-    output.  It will still differ in indenting, etc.
+    output.  However, it will still differ in indenting, output order, and
+    possibly the comments.  
 
     If all is well, the output of this, processed via
     :meth:`comparable_cdl`, should match 'ncdump' output, similarly
-    processed.
+    processed.  However, there is a big caveat : this routine outputs all
+    elements in alphabetical order, whereas 'ncdump' uses creation order
+    (?apparently?).  NetCDF4 abstracts away file- or handle- order (as does
+    ncobj).  You can get around this by re-saving the data, resulting in a file
+    _written_ in the alphabetical ordering.
 
     Args:
 
