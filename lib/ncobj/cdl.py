@@ -20,10 +20,12 @@ Extra notes:
 
 """
 import numpy as np
-import ncobj.grouping as ncg
+
 
 _DEBUG_COMPARABLE = False
 _DEBUG_CDL = False
+if _DEBUG_CDL:
+    import ncobj.grouping as ncg
 
 
 def comparable_cdl(string):
@@ -64,6 +66,12 @@ def comparable_cdl(string):
     return '\n'.join(lines)
 
 
+def _var_attr_cdl(var, attr):
+    if _DEBUG_CDL:
+        print 'CDL_VAR_ATTR var({})', ncg.group_path(var)
+    return var.name + _attr_cdl(attr)
+
+
 def _attr_cdl(attr):
     val = attr.value
     if _DEBUG_CDL:
@@ -72,22 +80,23 @@ def _attr_cdl(attr):
     type_str = 'L' if isinstance(val, int) else ''
     if isinstance(val, basestring):
         val_str = '"{}"'.format(val)
-    elif not hasattr(val, '__len__') or len(val) < 2:
-        val_str = repr(val)
     else:
+        if not hasattr(val, '__len__') or len(val) < 2:
+            val_strs = [repr(val)]
+        else:
+            val_strs = [repr(oneval) for oneval in val]
         # Make a crude attempt to display arrays as numpy does ?
         # We currently don't do arrays of strings (??)
         # So strip '0's from after the dp
-        val_strs = []
-        for oneval in val:
-            oneval_str = repr(oneval)
-            if '.' in oneval_str:
-                before, after = oneval_str.split('.')
+        val_strs_2 = []
+        for val_str in val_strs:
+            if '.' in val_str:
+                before, after = val_str.split('.')
                 while after.endswith('0'):
                     after = after[:-1]
-                oneval_str = '{}.{}'.format(before, after)
-            val_strs.append(oneval_str)
-        val_str = ', '.join(val_strs)
+                val_str = '{}.{}'.format(before, after)
+            val_strs_2.append(val_str)
+        val_str = ', '.join(val_strs_2)
     return ':{} = {}{} ;'.format(attr.name, val_str, type_str)
 
 
