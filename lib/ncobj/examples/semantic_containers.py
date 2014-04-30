@@ -111,23 +111,24 @@ def eg_simple_flat():
 REFERENCE_ATTRIBUTES_NAMES_AND_TYPES = [
     ('coordinates', nco.Variable),
     ('ancillary_variables', nco.Variable),
-#    ('bounds', nco.Variable),
-##    ('cell_measures', nco.Variable),
-#        # N.B. form is wrong: "name: var"
-##    ('cell_methods', nco.Variable),
-#       # N.B. even worse.
-#       # This starts to look like we will need associated encode/decode
-#       # methods for each reference attribute :-(
-## others:
-##  climatology, formula_terms, grid_mapping, instance_dimension
-##
+    ('bounds', nco.Variable),
+    #('cell_measures', nco.Variable),
+    #    # N.B. form is wrong: "name: var"
+    #('cell_methods', nco.Variable),
+    #   # N.B. even worse.
+    #   # This starts to look like we will need associated encode/decode
+    #   # methods for each reference attribute :-(
+    # others:
+    #   climatology, formula_terms, grid_mapping, instance_dimension
     ('container_vars', nco.Variable),
     ('container_dims', nco.Dimension)]
 
 
 _RefTag = namedtuple('_RefTag', 'rolename reference')
 
+
 # utility routines.
+
 def split_noempties(str, split_at):
     # Do a string split, but ignore any repeats of the splitter
     return [elem for elem in str.split(split_at) if len(elem)]
@@ -196,24 +197,22 @@ def flatten_grouped_containers(group):
 def _inner_flatten_grouped_containers(result):
     # represent groups as renamed variables with special container attributes
     for grp in list(result.groups):  # list() because loop changes the object
-        # Flatten any the inner groups first
+        # Flatten any inner groups first.
         _inner_flatten_grouped_containers(grp)
 
-        # Remove group from output, and add a container variable instead
+        # Remove group from output, and create a container variable instead.
         con_name = grp.name
         con_prefix = con_name + '___'
         grp.remove()
-        result.variables.add(ov(con_name, data=np.array(0)))
+        result.variables.add(ov(con_name, aa=grp.attributes, data=np.array(0)))
         con_var = result.variables[con_name]
-        con_var.attributes = grp.attributes
-        con_attrs = grp.attributes
-        con_var.attributes = con_attrs
+        con_attrs = con_var.attributes
 
-        # Add container type if not defined
+        # Add container type if not defined.
         if 'container_type' not in con_attrs.names():
             con_attrs.add(oa('container_type', 'simple'))
 
-        # Check or add container_dims attribute
+        # Check or add container_dims attribute.
         con_dims = [_RefTag(None, grp.dimensions[dim_name])
                     for dim_name in sorted(grp.dimensions.names())]
         if 'container_dims' in con_attrs.names():
@@ -225,19 +224,19 @@ def _inner_flatten_grouped_containers(result):
         for dim in list(grp.dimensions):  # list() because loop changes it
             result.dimensions.setitem_reference(con_prefix + dim.name, dim)
 
-        # Check or add container vars (aka "members")
+        # Check or add container_vars (aka "members") attribute.
         memb_vars = [_RefTag(None, grp.variables[name])
                      for name in sorted(grp.variables.names())]
-        con_roles_and_vars = con_attrs.get('container_vars', None)
-        if con_roles_and_vars:
+        con_vars_attr = con_attrs.get('container_vars', None)
+        if con_vars_attr:
             # Check the list matches the enclosed variables (sorted by name)
             role_vars = [_RefTag(None, var)
-                         for role_name, var in con_roles_and_vars.value]
+                         for role_name, var in con_vars_attr.value]
             assert role_vars == memb_vars
         else:
             con_attrs.add(oa('container_vars', memb_vars))
 
-        # Move variables to the parent level, and rename
+        # Move variables to the parent level, and rename.
         for var in list(grp.variables):  # list() because loop changes it
             result.variables.setitem_reference(con_prefix + var.name, var)
 
@@ -254,48 +253,45 @@ def group_flat_containers(group):
 
 
 def _inner_group_flat_containers(result):
-    # get variables representing containers (top-level only : recurse later)
+    # Get variables representing containers (top-level only : recurse later).
     con_vars = [var for var in result.variables
                 if 'container_type' in var.attributes.names()]
-    # translate each of these into an inner group
+    # Translate each of these into an inner group.
     for con_var in con_vars:
-        # remove container variable and add a group instead
-        result.variables.remove(con_var)
+        # Remove container variable and make a group instead.
+        con_var.remove()
         con_name = con_var.name
-        prefix = con_name + '___'
+        con_prefix = con_name + '___'
         result.groups.add(og(con_name, aa=con_var.attributes))
         con_grp = result.groups[con_name]
         con_attrs = con_grp.attributes
 
-        # remove dims attributes (if any) + process
+        # Remove dims attribute (if any) + process dims.
         dims_attr = con_attrs.pop('container_dims', None)
         if dims_attr:
-            # remove attribute and put dims in the group (removing prefixes)
+            # Put dims into the group (removing name prefixes)
             for _, dim in dims_attr.value:
-                # remove the dimension from the parent group
-                dim.remove()
                 # strip initial disambiguation prefix, if present
-                if dim.name.startswith(prefix):
-                    dim.rename(dim.name[len(prefix):])
-                # put dim in group with new name (N.B. this one, *not* a copy!)
-                con_grp.dimensions.setitem_reference(dim.name, dim)
+                dim_name = dim.name
+                if dim_name.startswith(con_prefix):
+                    dim_name = dim_name[len(con_prefix):]
+                # Move into group with new name (N.B. this one, *not* a copy!)
+                con_grp.dimensions.setitem_reference(dim_name, dim)
 
-        # move member variables into the group (removing prefixes)
+        # Move member variables into the group (removing prefixes).
         member_reftags = con_attrs['container_vars'].value
         for role_name, var in member_reftags:
-            # remove member from root
-            var.remove()
             # strip initial disambiguation prefix, if present
             var_name = var.name
-            if var_name.startswith(prefix):
-                var_name = var_name[len(prefix):]
-            # put var in group with new name (N.B. this one, *not* a copy!)
+            if var_name.startswith(con_prefix):
+                var_name = var.name[len(con_prefix):]
+            # Move var into group with new name (N.B. this one, *not* a copy!)
             con_grp.variables.setitem_reference(var_name, var)
-        # if container_vars is redundant, remove it.
+        # If container_vars attribute is redundant, remove it.
         if all(rolename is None for rolename, ref in member_reftags):
             del con_attrs['container_vars']
 
-    # lastly process subgroups likewise, to expand inner groups.
+    # Lastly, process subgroups likewise to expand inner groups.
     for grp in result.groups:
         _inner_group_flat_containers(grp)
 
