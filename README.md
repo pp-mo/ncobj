@@ -10,16 +10,17 @@ Latest web docs : http://pp-mo.github.io/build/html/ncobj.html
 
 Current Status
 --------------
-VERSION "0.1.1" : 2014-04-17
+VERSION "0.2.x" : 2014-04-30
  * Core classes written
    * Basic unit tests written + working.
-   * Some integration tests, currently disabled.
  * Structure management prototype code (ncobj.grouping)
    * Unit tests written, and working.
-   * Integration tests wanted.
  * Basic file i/o working (ncobj.nc_dataset)
    * some simple tests
  * Documentation with Sphinx
+ * Working examples:
+   * 'semantic containers' manipulations
+   * alphabetic-ordered CDL dumps
  * Non-working usecase examples demonstrate intended coding forms + api.
 
 Further motivation and ideas :

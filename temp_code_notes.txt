@@ -46,9 +46,6 @@ CHANGES
     * consider implementing a specialist container type instead of the list ?
     * (NEWER) possibly doesn't matter, if we only ever use it as data ??
 
-* review str() methods -- could usefully do more like ncdump -ch
-    * probably need a short form in str(), then separate call e.g. dump(), pp()
-
 * nc_dataset.read should choke on user datatypes.
 * nc_dataset.read should use setitem_reference throughout (not copying)
 
@@ -75,3 +72,4 @@ CDL is currently failing for variables of type 'string'.
     -- see file "test.nc" (not currently in Iris testdata or samples)
     Need to look up numpy and netcdf usage for these possibilities.
     Then add a testcase.
+AND SIMILAR for variables of 'int16' type.
