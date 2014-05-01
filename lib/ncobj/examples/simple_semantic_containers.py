@@ -3,8 +3,6 @@ Example code based on ideas in
 http://marqh.github.io/ncContainers/build/html/index.html
 
 """
-from collections import namedtuple
-
 import numpy as np
 
 import ncobj.grouping as ncg
