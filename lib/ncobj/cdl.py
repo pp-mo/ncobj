@@ -113,7 +113,8 @@ _VAR_TYPE_NAMES = {
     np.dtype('float32'): 'float',
     np.dtype('float64'): 'double',
     np.dtype('int32'): 'int',
-    np.dtype('int64'): 'long'}
+    np.dtype('int64'): 'long',
+    np.dtype('S1'): 'string'}
 
 _N_INDENT_DEFAULT = 4
 
