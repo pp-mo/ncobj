@@ -68,19 +68,48 @@ def comparable_cdl(string):
     return '\n'.join(lines)
 
 
+_DTYPES_TYPE_NAMES = {
+    np.dtype('S1'): 'char',
+    np.dtype('int8'): 'byte',
+    np.dtype('int16'): 'short',
+    np.dtype('int32'): 'int',
+    np.dtype('int64'): 'int64',
+    np.dtype('float32'): 'float',
+    np.dtype('float64'): 'double',
+    np.dtype('uint8'): 'ubyte',
+    np.dtype('uint16'): 'ushort',
+    np.dtype('uint32'): 'uint',
+    np.dtype('uint64'): 'uint64'
+}
+
+_DTYPES_ATTR_SUFFICES = {
+    # Don't bother with chars/strings, we'll handle those specially
+    np.dtype('int8'): 'b',
+    np.dtype('int16'): 's',
+    np.dtype('int32'): '',
+    np.dtype('int64'): 'L',
+    np.dtype('float32'): 'f',
+    np.dtype('float64'): '',
+    np.dtype('uint8'): 'UB',
+    np.dtype('uint16'): 'US',
+    np.dtype('uint32'): 'U',
+    np.dtype('uint64'): 'UL'
+}
+
+
 def _attr_cdl(attr):
     val = attr.value
     if _DEBUG_CDL:
         print 'CDL_ATTR ({}) : type={}, val={!r}'.format(
             ncg.group_path(attr), type(val), val)
-    type_str = 'L' if isinstance(val, int) else ''
     if isinstance(val, basestring):
-        val_str = '"{}"'.format(val)
+        contents_str = '"{}"'.format(val)
+        type_str = ''
     else:
-        if not hasattr(val, '__len__') or len(val) < 2:
-            val_strs = [repr(val)]
-        else:
-            val_strs = [repr(oneval) for oneval in val]
+        vals = np.array(val).flat[:]
+        val_basetype = vals[0].dtype
+        type_str = _DTYPES_ATTR_SUFFICES[val_basetype]
+        val_strs = [repr(val) for val in vals]
         # Make a crude attempt to display arrays as numpy does ?
         # We currently don't do arrays of strings (??)
         # So strip '0's from after the dp
@@ -92,8 +121,12 @@ def _attr_cdl(attr):
                     after = after[:-1]
                 val_str = '{}.{}'.format(before, after)
             val_strs_2.append(val_str)
-        val_str = ', '.join(val_strs_2)
-    return ':{} = {}{} ;'.format(attr.name, val_str, type_str)
+        contents_str = ', '.join(val_str + type_str for val_str in val_strs_2)
+    return '{} = {}'.format(attr.name, contents_str)
+
+
+def _wrapped_attr_cdl(attr):
+    return ':{} ;'.format(_attr_cdl(attr))
 
 
 def _dim_cdl(dim):
@@ -103,13 +136,6 @@ def _dim_cdl(dim):
     len_str = 'UNLIMITED' if dim.unlimited else str(dim.length)
     return '{} = {} ;'.format(dim.name, len_str)
 
-
-_VAR_TYPE_NAMES = {
-    np.dtype('float32'): 'float',
-    np.dtype('float64'): 'double',
-    np.dtype('int32'): 'int',
-    np.dtype('int64'): 'long',
-    np.dtype('S1'): 'string'}
 
 _N_INDENT_DEFAULT = 4
 
@@ -124,8 +150,11 @@ def _indent_lines(lines, n_indent=None):
 def _elements_string(elements, cdl_call, indent=_N_INDENT_DEFAULT):
     el_lines = [cdl_call(elements[el_name])
                 for el_name in sorted(elements.names())]
-    els_str = ''.join('\n' + line for line in el_lines if line and len(line))
-    return _indent_lines(els_str, indent)
+    els_str = '\n'.join(line for line in el_lines if line and len(line))
+    els_str = _indent_lines(els_str, indent)
+    if len(els_str) != 0:
+        els_str = '\n' + els_str
+    return els_str
 
 
 def _var_cdl(var):
@@ -137,13 +166,12 @@ def _var_cdl(var):
     if _DEBUG_CDL:
         print 'CDL_VAR ({}): type={}, dims=({})'.format(
             ncg.group_path(var), var.data.dtype, dims_str)
-    type_name = _VAR_TYPE_NAMES[var.data.dtype]
+    type_name = _DTYPES_TYPE_NAMES[var.data.dtype]
     result = '{} {}{} ;'.format(type_name, var.name, dims_str)
     if var.attributes:
-        att_strs = [var.name + _attr_cdl(var.attributes[attr_name])
-                    for attr_name in sorted(var.attributes.names())]
-        att_lines = ''.join('\n' + line for line in (att_strs))
-        result += _indent_lines(att_lines, _N_INDENT_DEFAULT)
+        def var_attr_cdl(attr):
+            return var.name + _wrapped_attr_cdl(attr)
+        result += _elements_string(var.attributes, var_attr_cdl)
     return result
 
 
@@ -165,7 +193,8 @@ def _group_cdl(group, at_root=True, indent=0, plus_indent=_N_INDENT_DEFAULT):
         class_name = 'global' if at_root else 'group'
         base_comment = '\n// {} attributes:'.format(class_name)
         result += base_comment
-        result += _elements_string(group.attributes, _attr_cdl, next_indent)
+        result += _elements_string(group.attributes, _wrapped_attr_cdl,
+                                   next_indent)
     if group.groups:
         result += '\n'
         group_indent = indent if at_root else next_indent
@@ -223,7 +252,7 @@ def cdl(element, indent=0, plus_indent=_N_INDENT_DEFAULT):
     elif isinstance(element, nco.Attribute):
         result = _attr_cdl(element)
     elif isinstance(element, nco.Dimension):
-        result = _attr_cdl(element)
+        result = _dim_cdl(element)
     else:
         raise ValueError( '{} is not a recognised NcObj element.'.format(
             element))

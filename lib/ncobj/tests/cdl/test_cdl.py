@@ -1,4 +1,5 @@
 import unittest as tests
+import netCDF4
 
 try:
     import netCDF4 as nc4
@@ -47,7 +48,7 @@ def _make_complex_group():
                dd=[od('subgroup_dim_y', 3)],
                vv=[ov('subgroup_var',
                       dd=[od('root_dim_x'), od('subgroup_dim_y')],
-                      aa=[oa('subgroup_var_attr', 57.31)],
+                      aa=[oa('subgroup_var_attr', 57.5)],
                       data=np.zeros((2, 3)))],
                gg=[og('sub_sub_group',
                       aa=[oa('sub_sub_group_attr', 'this')],
@@ -90,7 +91,7 @@ _complex_cdl = """
 
     variables:
         double subgroup_var(root_dim_x, subgroup_dim_y) ;
-                subgroup_var:subgroup_var_attr = 57.31 ;
+                subgroup_var:subgroup_var_attr = 57.5 ;
 
     // group attributes:
         :subgroup_attr = "qq" ;
@@ -108,8 +109,8 @@ _complex_cdl = """
     """
 
 
-class Test_cdl(tests.TestCase):
-    def test_comparable_cdl__basic(self):
+class Test_comparable_cdl(tests.TestCase):
+    def test__basic(self):
         test_str = """
             line1;  //no more
             line2 ;
@@ -142,7 +143,149 @@ class Test_cdl(tests.TestCase):
                                  result_str, expected_str)
         self.assertEqual(result_str, expected_str)
 
-    def test_cdl__group(self):
+
+class Test_cdl__attr(tests.TestCase):
+    def test_scalar(self):
+        result = ncdl.cdl(oa('x', 3.21))
+        self.assertEqual(result, 'x = 3.21')
+
+    def test_array(self):
+        result = ncdl.cdl(oa('x', [3.21, 1.23]))
+        self.assertEqual(result, 'x = 3.21, 1.23')
+
+    def test_int(self):
+        result = ncdl.cdl(oa('x', 3))
+        self.assertEqual(result, 'x = 3L')
+
+    def test_string(self):
+        result = ncdl.cdl(oa('x', 'this'))
+        self.assertEqual(result, 'x = "this"')
+
+    def test_byte_type(self):
+        result = ncdl.cdl(oa('x', np.array(5, dtype=np.dtype('int8'))))
+        self.assertEqual(result, 'x = 5b')
+
+    def test_ubyte_type(self):
+        result = ncdl.cdl(oa('x', np.array(5, dtype=np.dtype('uint8'))))
+        self.assertEqual(result, 'x = 5UB')
+
+    def test_short_type(self):
+        result = ncdl.cdl(oa('x', np.array(5, dtype=np.dtype('int16'))))
+        self.assertEqual(result, 'x = 5s')
+
+    def test_ushort_type(self):
+        result = ncdl.cdl(oa('x', np.array(5, dtype=np.dtype('uint16'))))
+        self.assertEqual(result, 'x = 5US')
+
+    def test_single_type(self):
+        result = ncdl.cdl(oa('x', np.array(5, dtype=np.dtype('int32'))))
+        self.assertEqual(result, 'x = 5')
+
+    def test_unsigned_type(self):
+        result = ncdl.cdl(oa('x', np.array(5, dtype=np.dtype('uint32'))))
+        self.assertEqual(result, 'x = 5U')
+
+    def test_long_type(self):
+        result = ncdl.cdl(oa('x', np.array(5, dtype=np.dtype('int64'))))
+        self.assertEqual(result, 'x = 5L')
+
+    def test_ulong_type(self):
+        result = ncdl.cdl(oa('x', np.array(5, dtype=np.dtype('uint64'))))
+        self.assertEqual(result, 'x = 5UL')
+
+    def test_float_type(self):
+        result = ncdl.cdl(oa('x', np.array(1.23, dtype=np.dtype('float32'))))
+        self.assertEqual(result, 'x = 1.23f')
+
+    def test_double_type(self):
+        result = ncdl.cdl(oa('x', np.array(1.23, dtype=np.dtype('float64'))))
+        self.assertEqual(result, 'x = 1.23')
+
+
+class Test_cdl__dimension(tests.TestCase):
+    def test_basic(self):
+        result = ncdl.cdl(od('x', 3))
+        self.assertEqual(result, 'x = 3 ;')
+
+    def test_unlimited(self):
+        result = ncdl.cdl(od('x', 3, u=True))
+        self.assertEqual(result, 'x = UNLIMITED ;')
+
+
+
+class Test_cdl__variable(tests.TestCase):
+    def test_scalar(self):
+        result = ncdl.cdl(ov('x', data=np.array(3.21, dtype=np.float32)))
+        self.assertEqual(result, 'float x ;')
+
+    def test_1d(self):
+        result = ncdl.cdl(ov('x', dd=[od('p')], data=np.array(1.0)))
+        self.assertEqual(result, 'double x(p) ;')
+
+    def test_nd(self):
+        result = ncdl.cdl(ov('x', dd=[od('p'), od('q')], data=np.array(1.0)))
+        self.assertEqual(result, 'double x(p, q) ;')
+
+    def test_attrs(self):
+        result = ncdl.cdl(ov('x', dd=[od('p'), od('q')],
+                             aa=[oa('n1', 3), oa('r1', 1.24)],
+                             data=np.array(1.0)))
+        self.assertEqual(result,
+                         'double x(p, q) ;\n'
+                         '    x:n1 = 3L ;\n'
+                         '    x:r1 = 1.24 ;')
+
+    def test_byte(self):
+        result = ncdl.cdl(ov('x', data=np.array(1, dtype=np.dtype('int8'))))
+        self.assertEqual(result, 'byte x ;')
+
+    def test_ubyte(self):
+        result = ncdl.cdl(ov('x', data=np.array(1, dtype=np.dtype('uint8'))))
+        self.assertEqual(result, 'ubyte x ;')
+
+    def test_short(self):
+        result = ncdl.cdl(ov('x', data=np.array(1, dtype=np.dtype('int16'))))
+        self.assertEqual(result, 'short x ;')
+
+    def test_ushort(self):
+        result = ncdl.cdl(ov('x', data=np.array(1, dtype=np.dtype('uint16'))))
+        self.assertEqual(result, 'ushort x ;')
+
+    def test_int(self):
+        result = ncdl.cdl(ov('x', data=np.array(1, dtype=np.dtype('int32'))))
+        self.assertEqual(result, 'int x ;')
+
+    def test_uint(self):
+        result = ncdl.cdl(ov('x', data=np.array(1, dtype=np.dtype('uint32'))))
+        self.assertEqual(result, 'uint x ;')
+
+    def test_long(self):
+        result = ncdl.cdl(ov('x', data=np.array(1, dtype=np.dtype('int64'))))
+        self.assertEqual(result, 'int64 x ;')
+
+    def test_ulong(self):
+        result = ncdl.cdl(ov('x', data=np.array(1, dtype=np.dtype('uint64'))))
+        self.assertEqual(result, 'uint64 x ;')
+
+    def test_float(self):
+        result = ncdl.cdl(ov('x', data=np.array(1.0,
+                                                dtype=np.dtype('float32'))))
+        self.assertEqual(result, 'float x ;')
+
+    def test_double(self):
+        result = ncdl.cdl(ov('x', data=np.array(1.0)))
+        self.assertEqual(result, 'double x ;')
+
+    def test_chars(self):
+        result = ncdl.cdl(ov('x', dd=[od('STRLEN_4', 4)],
+                             data=np.array(['t', 'h', 'i', 's'])))
+        self.assertEqual(result, 'char x(STRLEN_4) ;')
+
+
+
+
+class Test_cdl__group(tests.TestCase):
+    def test__group(self):
         g = _make_complex_group()
         result_cdl = ncdl.cdl(g)
         expect_cdl = _complex_cdl[:]
@@ -163,6 +306,16 @@ if _nc4_available:
     import subprocess
     import tempfile
 
+    def strip_lines(string):
+        lines = string.split('\n')
+        lines = [line.strip() for line in lines]
+        lines = [line for line in lines if len(line)]
+        return '\n'.join(lines)
+
+    def sort_lines(string):
+        lines = string.split('\n')
+        return '\n'.join(sorted(lines))
+
     class Test_cdl__ncdump(tests.TestCase):
         def test_cdl__ncdump_match(self):
             ncdump_output = _complex_cdl[:]
@@ -177,18 +330,74 @@ if _nc4_available:
             finally:
                 shutil.rmtree(file_dirpath)
 
-            def strip_lines(string):
-                lines = string.split('\n')
-                lines = [line.strip() for line in lines]
-                lines = [line for line in lines if len(line)]
-                return '\n'.join(lines)
-
             expected = strip_lines(ncdump_output)
             found = strip_lines(results)
             if expected != found:
                 # (Debug output)
                 print_linewise_diffs('expected', 'got', expected, found)
             self.assertEqual(found, expected)
+
+    class Test_cdl__alltypes(tests.TestCase):
+        def _write_alltypes(self):
+            pass
+
+        def test_attrs(self):
+            def _write_testdata(ds):
+                # Create a simple x2 dimension for array testing.
+                ds.createDimension('pair', 2)
+
+                # Create variables + attributes of all netcdf basic types.
+                for np_type, type_name in \
+                        ncdl._DTYPES_TYPE_NAMES.iteritems():
+                    if type_name == 'char':
+                        scalar = 'A'
+                        array = 'String_data'
+                        # N.B. Wrapping this with np.array() has no effect.
+                    else:
+                        scalar = np.array(1.25, dtype=np_type)
+                        array = np.array([1.25, 13.25], dtype=np_type)
+
+                    attr_name = 'scalar_attr_' + type_name
+                    ds.setncattr(attr_name, scalar)
+
+                    attr_name = 'vector_attr_' + type_name
+                    ds.setncattr(attr_name, array)
+
+                    var_name = 'scalar_var_' + type_name
+                    var = ds.createVariable(varname=var_name,
+                                            datatype=np_type)
+                    var[:] = scalar
+
+                    var_name = 'array_var_' + type_name
+                    var = ds.createVariable(varname=var_name,
+                                            datatype=np_type,
+                                            dimensions=('pair',))
+                    var[:] = array
+
+            testfile_name = 'alltypes.nc'
+            temp_dirpath = tempfile.mkdtemp()
+            try:
+                file_path = os.path.join(temp_dirpath, testfile_name)
+                with nc4.Dataset(file_path, 'w') as ds:
+                    _write_testdata(ds)
+
+                ncdump_output = subprocess.check_output(
+                    'ncdump -h ' + file_path, shell=True)
+
+                with nc4.Dataset(file_path, 'r') as ds:
+                    read_data = ncf.read(ds)
+                    read_data.rename('alltypes')
+                    cdl_results = ncdl.cdl(read_data)
+
+                expected = sort_lines(strip_lines(ncdump_output))
+                found = sort_lines(strip_lines(cdl_results))
+                if expected != found:
+                    # (Debug output)
+                    print_linewise_diffs('expected', 'got', expected, found)
+                self.assertEqual(found, expected)
+
+            finally:
+                shutil.rmtree(temp_dirpath)
 
 
 if __name__ == '__main__':
