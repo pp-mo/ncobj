@@ -22,12 +22,13 @@ Extra notes:
 import numpy as np
 
 
-import ncobj.grouping as ncg
+import ncobj as nco
 
 
-_DEBUG_COMPARABLE = False
 _DEBUG_CDL = False
 
+if _DEBUG_CDL:
+    import ncobj.grouping as ncg
 
 def comparable_cdl(string):
     """
@@ -65,12 +66,6 @@ def comparable_cdl(string):
     lines = [line for line in lines if len(line)]
 
     return '\n'.join(lines)
-
-
-def _var_attr_cdl(var, attr):
-    if _DEBUG_CDL:
-        print 'CDL_VAR_ATTR var({})', ncg.group_path(var)
-    return var.name + _attr_cdl(attr)
 
 
 def _attr_cdl(attr):
@@ -148,11 +143,11 @@ def _var_cdl(var):
         att_strs = [var.name + _attr_cdl(var.attributes[attr_name])
                     for attr_name in sorted(var.attributes.names())]
         att_lines = ''.join('\n' + line for line in (att_strs))
-        result += _indent_lines(att_lines, 8)
+        result += _indent_lines(att_lines, _N_INDENT_DEFAULT)
     return result
 
 
-def _group_cdl(group, at_root=True, indent=0, plus_indent=4):
+def _group_cdl(group, at_root=True, indent=0, plus_indent=_N_INDENT_DEFAULT):
     if _DEBUG_CDL:
         print 'CDL_GROUP ({})'.format(ncg.group_path(group))
     next_indent = indent + plus_indent
@@ -184,13 +179,13 @@ def _group_cdl(group, at_root=True, indent=0, plus_indent=4):
     return result
 
 
-def group_cdl(group, indent=0, plus_indent=4):
+def cdl(element, indent=0, plus_indent=_N_INDENT_DEFAULT):
     """
-    Create a CDL output string representing a :class:`ncobj.Group`.
+    Make a CDL output string for an Ncobj element (aka NetCDF 'component').
 
     This attempts not just to produce valid CDL, but to replicate ncdump
     output.  However, it will still differ in indenting, output order, and
-    possibly the comments.  
+    possibly the comments.
 
     If all is well, the output of this, processed via
     :meth:`comparable_cdl`, should match 'ncdump' output, similarly
@@ -202,8 +197,8 @@ def group_cdl(group, indent=0, plus_indent=4):
 
     Args:
 
-    * group (:class:`ncobj.Group`):
-        group to generate representation of.
+    * element (:class:`ncobj.NcObj`):
+        item to generate a representation of.
 
     * indent (int):
         a number of spaces to prefix all output lines.
@@ -216,9 +211,21 @@ def group_cdl(group, indent=0, plus_indent=4):
 
     .. note::
 
-        'group' must be "complete" in the sense of
+        Groups must be "complete" in the sense of
         :meth:`ncobj.grouping.complete`, or various errors can occur.
 
     """
-    return _group_cdl(group, indent=indent, plus_indent=plus_indent,
-                      at_root=True)
+    if isinstance(element, nco.Group):
+        result = _group_cdl(element, indent=indent, plus_indent=plus_indent,
+                            at_root=True)
+    elif isinstance(element, nco.Variable):
+        result = _var_cdl(element)
+    elif isinstance(element, nco.Attribute):
+        result = _attr_cdl(element)
+    elif isinstance(element, nco.Dimension):
+        result = _attr_cdl(element)
+    else:
+        raise ValueError( '{} is not a recognised NcObj element.'.format(
+            element))
+    return result
+

@@ -142,16 +142,16 @@ class Test_cdl(tests.TestCase):
                                  result_str, expected_str)
         self.assertEqual(result_str, expected_str)
 
-    def test_group_cdl(self):
+    def test_cdl__group(self):
         g = _make_complex_group()
-        result_cdl = ncdl.group_cdl(g)
+        result_cdl = ncdl.cdl(g)
         expect_cdl = _complex_cdl[:]
         # Compare, but skipping comments and whitespace.
         result_cmp = ncdl.comparable_cdl(result_cdl)
         expect_cmp = ncdl.comparable_cdl(expect_cdl)
         if result_cmp != expect_cmp:
             # (Debug output)
-            print_linewise_diffs('group_cdl output', 'expected',
+            print_linewise_diffs('cdl output', 'expected',
                                  result_cmp, expect_cmp)
         self.assertEqual(result_cmp, expect_cmp)
 

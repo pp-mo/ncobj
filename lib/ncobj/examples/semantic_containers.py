@@ -25,7 +25,6 @@ from collections import namedtuple
 import numpy as np
 
 import ncobj as nco
-from ncobj import Variable, Dimension, Attribute, Group
 import ncobj.grouping as ncg
 from ncobj.shorts import og, od, ov, oa
 from ncobj.examples.simple_semantic_containers import _fake_complete

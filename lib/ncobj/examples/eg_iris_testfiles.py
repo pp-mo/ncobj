@@ -26,7 +26,7 @@ def check_file_cdl(file_path):
         # Rename so name matches temporary file name as seen by ncdump.
         g.rename('temp')
         # Generate cdl.
-        g_cdl = ncdl.group_cdl(g)
+        g_cdl = ncdl.cdl(g)
     try:
         # Run ncdump on the test file
         f_cdl = subprocess.check_output('ncdump -h temp.nc', shell=True)

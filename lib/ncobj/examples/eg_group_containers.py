@@ -2,18 +2,13 @@
 Example code demonstrating simple semantic containers 'grouping' operation.
 
 """
-import mock
-import numpy as np
-
-import ncobj as nco
-import ncobj.grouping as ncg
 import ncobj.cdl as ncdl
 
 import ncobj.examples.simple_semantic_containers as egs
 
 
 g = egs.eg_simple_flat()
-g_cdl = ncdl.group_cdl(g)
+g_cdl = ncdl.cdl(g)
 
 print
 print '----------------'
@@ -23,7 +18,7 @@ print g_cdl
 print '----------------'
 
 g_grouped = egs.group_flat_containers(g)
-g_grouped_cdl = ncdl.group_cdl(g_grouped)
+g_grouped_cdl = ncdl.cdl(g_grouped)
 print
 print '----------------'
 print 'Result, grouped from flat form:'

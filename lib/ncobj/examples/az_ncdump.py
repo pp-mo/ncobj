@@ -20,7 +20,7 @@ import ncobj.cdl as ncdl
 def ncfile_cdl(file_path):
     with netCDF4.Dataset(file_path) as ds:
         group = ncds.read(ds)
-        result = ncdl.group_cdl(group)
+        result = ncdl.cdl(group)
     return result
 
 
