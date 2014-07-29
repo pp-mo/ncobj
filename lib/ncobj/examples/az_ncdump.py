@@ -11,16 +11,13 @@ We could support that later, if we want.
 import argparse
 import netCDF4
 import ncobj.nc_dataset as ncds
-import ncobj.cdl as ncdl
-
-
-# ncdl._DEBUG_CDL = True
+from ncobj.cdl import cdl
 
 
 def ncfile_cdl(file_path):
     with netCDF4.Dataset(file_path) as ds:
         group = ncds.read(ds)
-        result = ncdl.cdl(group)
+        result = cdl(group)
     return result
 
 

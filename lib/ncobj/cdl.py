@@ -25,11 +25,6 @@ import numpy as np
 import ncobj as nco
 
 
-_DEBUG_CDL = False
-
-if _DEBUG_CDL:
-    import ncobj.grouping as ncg
-
 def comparable_cdl(string):
     """
     Convert free-format (c code like) text into a 'canonical' form that can be
@@ -99,9 +94,6 @@ _DTYPES_ATTR_SUFFICES = {
 
 def _attr_cdl(attr):
     val = attr.value
-    if _DEBUG_CDL:
-        print 'CDL_ATTR ({}) : type={}, val={!r}'.format(
-            ncg.group_path(attr), type(val), val)
     if isinstance(val, basestring):
         contents_str = '"{}"'.format(val)
         type_str = ''
@@ -130,9 +122,6 @@ def _wrapped_attr_cdl(attr):
 
 
 def _dim_cdl(dim):
-    if _DEBUG_CDL:
-        print 'CDL_DIM ({}) : length={}, unlimited={}'.format(
-            ncg.group_path(dim), dim.length, dim.unlimited)
     len_str = 'UNLIMITED' if dim.unlimited else str(dim.length)
     return '{} = {} ;'.format(dim.name, len_str)
 
@@ -151,9 +140,8 @@ def _elements_string(elements, cdl_call, indent=_N_INDENT_DEFAULT):
     el_lines = [cdl_call(elements[el_name])
                 for el_name in sorted(elements.names())]
     els_str = '\n'.join(line for line in el_lines if line and len(line))
-    els_str = _indent_lines(els_str, indent)
-    if len(els_str) != 0:
-        els_str = '\n' + els_str
+    if len(els_str):
+        els_str = '\n' + _indent_lines(els_str, indent)
     return els_str
 
 
@@ -163,9 +151,6 @@ def _var_cdl(var):
             ', '.join(dim.name for dim in var.dimensions))
     else:
         dims_str = ''
-    if _DEBUG_CDL:
-        print 'CDL_VAR ({}): type={}, dims=({})'.format(
-            ncg.group_path(var), var.data.dtype, dims_str)
     type_name = _DTYPES_TYPE_NAMES[var.data.dtype]
     result = '{} {}{} ;'.format(type_name, var.name, dims_str)
     if var.attributes:
@@ -176,8 +161,6 @@ def _var_cdl(var):
 
 
 def _group_cdl(group, at_root=True, indent=0, plus_indent=_N_INDENT_DEFAULT):
-    if _DEBUG_CDL:
-        print 'CDL_GROUP ({})'.format(ncg.group_path(group))
     next_indent = indent + plus_indent
     ind_str = '\n' + ' ' * indent
     space_id = 'netcdf' if at_root else 'group:'

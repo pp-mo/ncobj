@@ -3,14 +3,14 @@ Example code demonstrating 'flatten' operation for enhanced semantic containers
 definition.
 
 """
-import ncobj.cdl as ncdl
+from ncobj.cdl import cdl
 
 import ncobj.examples.semantic_containers as egs
 #from ncobj.tests.cdl.test_cdl import print_linewise_diffs
 
 
 g = egs.eg_simple_flat()
-g_cdl = ncdl.cdl(g)
+g_cdl = cdl(g)
 
 print
 print '----------------'
@@ -20,7 +20,7 @@ print g_cdl
 print '----------------'
 
 g_grouped = egs.group_flat_containers(g)
-g_grouped_cdl = ncdl.cdl(g_grouped)
+g_grouped_cdl = cdl(g_grouped)
 print
 print '----------------'
 print 'Result, grouped from flat form:'
@@ -29,7 +29,7 @@ print g_grouped_cdl
 print '----------------'
 
 g_grp_eg = egs.eg_simple_grouped()
-#g_grp_eg_cdl = ncdl.cdl(g_grp_eg)
+#g_grp_eg_cdl = cdl(g_grp_eg)
 #print
 #print '----------------'
 #print 'ORIGINAL grouped form:'

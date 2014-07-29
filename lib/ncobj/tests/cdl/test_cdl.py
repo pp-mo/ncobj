@@ -9,9 +9,11 @@ except ImportError:
 
 import numpy as np
 
-import ncobj.cdl as ncdl
 import ncobj.grouping as ncg
 from ncobj.shorts import og, od, ov, oa
+
+import ncobj.cdl as ncdl
+from ncobj.cdl import cdl, comparable_cdl
 
 
 def print_linewise_diffs(id1, id2, str1, str2):
@@ -135,7 +137,7 @@ class Test_comparable_cdl(tests.TestCase):
             ":q = 4 ;",
             "}",
             "end"])
-        result_str = ncdl.comparable_cdl(test_str)
+        result_str = comparable_cdl(test_str)
         if result_str != expected_str:
             # (Debug output)
             print 'results do not match:'
@@ -146,88 +148,88 @@ class Test_comparable_cdl(tests.TestCase):
 
 class Test_cdl__attr(tests.TestCase):
     def test_scalar(self):
-        result = ncdl.cdl(oa('x', 3.21))
+        result = cdl(oa('x', 3.21))
         self.assertEqual(result, 'x = 3.21')
 
     def test_array(self):
-        result = ncdl.cdl(oa('x', [3.21, 1.23]))
+        result = cdl(oa('x', [3.21, 1.23]))
         self.assertEqual(result, 'x = 3.21, 1.23')
 
     def test_int(self):
-        result = ncdl.cdl(oa('x', 3))
+        result = cdl(oa('x', 3))
         self.assertEqual(result, 'x = 3L')
 
     def test_string(self):
-        result = ncdl.cdl(oa('x', 'this'))
+        result = cdl(oa('x', 'this'))
         self.assertEqual(result, 'x = "this"')
 
     def test_byte_type(self):
-        result = ncdl.cdl(oa('x', np.array(5, dtype=np.dtype('int8'))))
+        result = cdl(oa('x', np.array(5, dtype=np.dtype('int8'))))
         self.assertEqual(result, 'x = 5b')
 
     def test_ubyte_type(self):
-        result = ncdl.cdl(oa('x', np.array(5, dtype=np.dtype('uint8'))))
+        result = cdl(oa('x', np.array(5, dtype=np.dtype('uint8'))))
         self.assertEqual(result, 'x = 5UB')
 
     def test_short_type(self):
-        result = ncdl.cdl(oa('x', np.array(5, dtype=np.dtype('int16'))))
+        result = cdl(oa('x', np.array(5, dtype=np.dtype('int16'))))
         self.assertEqual(result, 'x = 5s')
 
     def test_ushort_type(self):
-        result = ncdl.cdl(oa('x', np.array(5, dtype=np.dtype('uint16'))))
+        result = cdl(oa('x', np.array(5, dtype=np.dtype('uint16'))))
         self.assertEqual(result, 'x = 5US')
 
     def test_single_type(self):
-        result = ncdl.cdl(oa('x', np.array(5, dtype=np.dtype('int32'))))
+        result = cdl(oa('x', np.array(5, dtype=np.dtype('int32'))))
         self.assertEqual(result, 'x = 5')
 
     def test_unsigned_type(self):
-        result = ncdl.cdl(oa('x', np.array(5, dtype=np.dtype('uint32'))))
+        result = cdl(oa('x', np.array(5, dtype=np.dtype('uint32'))))
         self.assertEqual(result, 'x = 5U')
 
     def test_long_type(self):
-        result = ncdl.cdl(oa('x', np.array(5, dtype=np.dtype('int64'))))
+        result = cdl(oa('x', np.array(5, dtype=np.dtype('int64'))))
         self.assertEqual(result, 'x = 5L')
 
     def test_ulong_type(self):
-        result = ncdl.cdl(oa('x', np.array(5, dtype=np.dtype('uint64'))))
+        result = cdl(oa('x', np.array(5, dtype=np.dtype('uint64'))))
         self.assertEqual(result, 'x = 5UL')
 
     def test_float_type(self):
-        result = ncdl.cdl(oa('x', np.array(1.23, dtype=np.dtype('float32'))))
+        result = cdl(oa('x', np.array(1.23, dtype=np.dtype('float32'))))
         self.assertEqual(result, 'x = 1.23f')
 
     def test_double_type(self):
-        result = ncdl.cdl(oa('x', np.array(1.23, dtype=np.dtype('float64'))))
+        result = cdl(oa('x', np.array(1.23, dtype=np.dtype('float64'))))
         self.assertEqual(result, 'x = 1.23')
 
 
 class Test_cdl__dimension(tests.TestCase):
     def test_basic(self):
-        result = ncdl.cdl(od('x', 3))
+        result = cdl(od('x', 3))
         self.assertEqual(result, 'x = 3 ;')
 
     def test_unlimited(self):
-        result = ncdl.cdl(od('x', 3, u=True))
+        result = cdl(od('x', 3, u=True))
         self.assertEqual(result, 'x = UNLIMITED ;')
 
 
 
 class Test_cdl__variable(tests.TestCase):
     def test_scalar(self):
-        result = ncdl.cdl(ov('x', data=np.array(3.21, dtype=np.float32)))
+        result = cdl(ov('x', data=np.array(3.21, dtype=np.float32)))
         self.assertEqual(result, 'float x ;')
 
     def test_1d(self):
-        result = ncdl.cdl(ov('x', dd=[od('p')], data=np.array(1.0)))
+        result = cdl(ov('x', dd=[od('p')], data=np.array(1.0)))
         self.assertEqual(result, 'double x(p) ;')
 
     def test_nd(self):
-        result = ncdl.cdl(ov('x', dd=[od('p'), od('q')], data=np.array(1.0)))
+        result = cdl(ov('x', dd=[od('p'), od('q')], data=np.array(1.0)))
         self.assertEqual(result, 'double x(p, q) ;')
 
     def test_attrs(self):
-        result = ncdl.cdl(ov('x', dd=[od('p'), od('q')],
+        result = cdl(ov('x', dd=[od('p'), od('q')],
                              aa=[oa('n1', 3), oa('r1', 1.24)],
                              data=np.array(1.0)))
         self.assertEqual(result,
@@ -236,48 +238,48 @@ class Test_cdl__variable(tests.TestCase):
                          '    x:r1 = 1.24 ;')
 
     def test_byte(self):
-        result = ncdl.cdl(ov('x', data=np.array(1, dtype=np.dtype('int8'))))
+        result = cdl(ov('x', data=np.array(1, dtype=np.dtype('int8'))))
         self.assertEqual(result, 'byte x ;')
 
     def test_ubyte(self):
-        result = ncdl.cdl(ov('x', data=np.array(1, dtype=np.dtype('uint8'))))
+        result = cdl(ov('x', data=np.array(1, dtype=np.dtype('uint8'))))
         self.assertEqual(result, 'ubyte x ;')
 
     def test_short(self):
-        result = ncdl.cdl(ov('x', data=np.array(1, dtype=np.dtype('int16'))))
+        result = cdl(ov('x', data=np.array(1, dtype=np.dtype('int16'))))
         self.assertEqual(result, 'short x ;')
 
     def test_ushort(self):
-        result = ncdl.cdl(ov('x', data=np.array(1, dtype=np.dtype('uint16'))))
+        result = cdl(ov('x', data=np.array(1, dtype=np.dtype('uint16'))))
         self.assertEqual(result, 'ushort x ;')
 
     def test_int(self):
-        result = ncdl.cdl(ov('x', data=np.array(1, dtype=np.dtype('int32'))))
+        result = cdl(ov('x', data=np.array(1, dtype=np.dtype('int32'))))
         self.assertEqual(result, 'int x ;')
 
     def test_uint(self):
-        result = ncdl.cdl(ov('x', data=np.array(1, dtype=np.dtype('uint32'))))
+        result = cdl(ov('x', data=np.array(1, dtype=np.dtype('uint32'))))
         self.assertEqual(result, 'uint x ;')
 
     def test_long(self):
-        result = ncdl.cdl(ov('x', data=np.array(1, dtype=np.dtype('int64'))))
+        result = cdl(ov('x', data=np.array(1, dtype=np.dtype('int64'))))
         self.assertEqual(result, 'int64 x ;')
 
     def test_ulong(self):
-        result = ncdl.cdl(ov('x', data=np.array(1, dtype=np.dtype('uint64'))))
+        result = cdl(ov('x', data=np.array(1, dtype=np.dtype('uint64'))))
         self.assertEqual(result, 'uint64 x ;')
 
     def test_float(self):
-        result = ncdl.cdl(ov('x', data=np.array(1.0,
+        result = cdl(ov('x', data=np.array(1.0,
                                                 dtype=np.dtype('float32'))))
         self.assertEqual(result, 'float x ;')
 
     def test_double(self):
-        result = ncdl.cdl(ov('x', data=np.array(1.0)))
+        result = cdl(ov('x', data=np.array(1.0)))
         self.assertEqual(result, 'double x ;')
 
     def test_chars(self):
-        result = ncdl.cdl(ov('x', dd=[od('STRLEN_4', 4)],
+        result = cdl(ov('x', dd=[od('STRLEN_4', 4)],
                              data=np.array(['t', 'h', 'i', 's'])))
         self.assertEqual(result, 'char x(STRLEN_4) ;')
 
@@ -287,7 +289,7 @@ class Test_cdl__variable(tests.TestCase):
 class Test_cdl__group(tests.TestCase):
     def test__group(self):
         g = _make_complex_group()
-        result_cdl = ncdl.cdl(g)
+        result_cdl = cdl(g)
         expect_cdl = _complex_cdl[:]
         # Compare, but skipping comments and whitespace.
         result_cmp = ncdl.comparable_cdl(result_cdl)
@@ -387,7 +389,7 @@ if _nc4_available:
                 with nc4.Dataset(file_path, 'r') as ds:
                     read_data = ncf.read(ds)
                     read_data.rename('alltypes')
-                    cdl_results = ncdl.cdl(read_data)
+                    cdl_results = cdl(read_data)
 
                 expected = sort_lines(strip_lines(ncdump_output))
                 found = sort_lines(strip_lines(cdl_results))
