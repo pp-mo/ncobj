@@ -92,7 +92,8 @@ _DTYPES_ATTR_SUFFICES = {
 }
 
 
-def _attr_cdl(attr):
+def _bare_attr_cdl_string(attr):
+    # Return a CDL string representing an attribute and its value.
     val = attr.value
     if isinstance(val, basestring):
         contents_str = '"{}"'.format(val)
@@ -117,35 +118,44 @@ def _attr_cdl(attr):
     return '{} = {}'.format(attr.name, contents_str)
 
 
-def _wrapped_attr_cdl(attr):
-    return ':{} ;'.format(_attr_cdl(attr))
+def _attr_cdl_string(attr):
+    # Return a full attribute CDL string, including the prefix and suffix.
+    return ':{} ;'.format(_bare_attr_cdl_string(attr))
 
 
-def _dim_cdl(dim):
+def _attr_cdl_lines(*args, **kwargs):
+    # Return a list of CDL lines for an attribute.
+    return [_attr_cdl_string(*args, **kwargs)]
+
+
+def _dim_cdl_lines(dim):
+    # Return a list of CDL lines for a dimension.
     len_str = 'UNLIMITED' if dim.unlimited else str(dim.length)
-    return '{} = {} ;'.format(dim.name, len_str)
+    dim_line = '{} = {} ;'.format(dim.name, len_str)
+    return [dim_line]
 
 
+#: The default indent spacing.
 _N_INDENT_DEFAULT = 4
 
 
-def _indent_lines(lines, n_indent=None):
-    if n_indent is None:
-        n_indent = _N_INDENT_DEFAULT
+def _indent_lines(lines, n_indent=_N_INDENT_DEFAULT):
+    # Prepend each of the lines with an indent string (spaces).
     indent = ' ' * n_indent
-    return '\n'.join(indent + line for line in lines.split('\n'))
+    return [indent + line for line in lines]
 
 
-def _elements_string(elements, cdl_call, indent=_N_INDENT_DEFAULT):
-    el_lines = [cdl_call(elements[el_name])
-                for el_name in sorted(elements.names())]
-    els_str = '\n'.join(line for line in el_lines if line and len(line))
-    if len(els_str):
-        els_str = '\n' + _indent_lines(els_str, indent)
-    return els_str
+def _elements_lines(elements, cdl_lines_call, indent=_N_INDENT_DEFAULT):
+    # Call a CDL-lines function for all of a container's contents, and return
+    # the concatenation of all the result lines.
+    el_lines = []
+    for el_name in sorted(elements.names()):
+        el_lines.extend(cdl_lines_call(elements[el_name]))
+    return _indent_lines(el_lines, n_indent=indent)
 
 
-def _var_cdl(var):
+def _var_cdl_lines(var):
+    # Return a list of CDL lines for a variable.
     if var.dimensions:
         dims_str = '({})'.format(
             ', '.join(dim.name for dim in var.dimensions))
@@ -153,41 +163,53 @@ def _var_cdl(var):
         dims_str = ''
     type_name = _DTYPES_TYPE_NAMES[var.data.dtype]
     result = '{} {}{} ;'.format(type_name, var.name, dims_str)
+    result = [result]
     if var.attributes:
-        def var_attr_cdl(attr):
-            return var.name + _wrapped_attr_cdl(attr)
-        result += _elements_string(var.attributes, var_attr_cdl)
+        def var_attr_cdl_lines(attr):
+            return [var.name + _attr_cdl_string(attr)]
+        result.extend(_elements_lines(var.attributes, var_attr_cdl_lines))
     return result
 
 
-def _group_cdl(group, at_root=True, indent=0, plus_indent=_N_INDENT_DEFAULT):
+def _group_cdl_lines(group, at_root=True, indent=0,
+                     plus_indent=_N_INDENT_DEFAULT):
+    # Return a list of CDL lines for a group.
     next_indent = indent + plus_indent
-    ind_str = '\n' + ' ' * indent
+    ind_str = ' ' * indent
     space_id = 'netcdf' if at_root else 'group:'
     result = '{} {} '.format(space_id, group.name) + '{'
+    result = [result]
     if group.dimensions:
-        result += '\n' + ind_str + 'dimensions:'
-        result += _elements_string(group.dimensions, _dim_cdl, next_indent)
+        result.extend(['', ind_str + 'dimensions:'])
+        result.extend(_elements_lines(group.dimensions, _dim_cdl_lines,
+                                      next_indent))
     if group.variables:
-        result += '\n' + ind_str + 'variables:'
-        result += _elements_string(group.variables, _var_cdl, next_indent)
+        result.extend(['', ind_str + 'variables:'])
+        result.extend(_elements_lines(group.variables, _var_cdl_lines,
+                                      next_indent))
     if group.attributes:
-        result += '\n'
         class_name = 'global' if at_root else 'group'
-        base_comment = '\n// {} attributes:'.format(class_name)
-        result += base_comment
-        result += _elements_string(group.attributes, _wrapped_attr_cdl,
-                                   next_indent)
+        base_comment = '// {} attributes:'.format(class_name)
+        result.extend(['', base_comment])
+        result.extend(_elements_lines(group.attributes,
+                                      _attr_cdl_lines,
+                                      next_indent))
     if group.groups:
-        result += '\n'
         group_indent = indent if at_root else next_indent
-        _grp_cdl = lambda g: _group_cdl(g, at_root=False,
-                                        plus_indent=plus_indent)
-        result += _elements_string(group.groups, _grp_cdl, indent=group_indent)
 
-    result += '\n}'
+        def _spaced_grp_cdl_lines(g):
+            return [''] + _group_cdl_lines(g, at_root=False,
+                                           plus_indent=plus_indent)
+        inner_groups_lines = _elements_lines(group.groups,
+                                             _spaced_grp_cdl_lines,
+                                             indent=group_indent)
+        result.extend(inner_groups_lines)
+
+    end_line = '}'
     if not at_root:
-        result += ' // group {}'.format(group.name)
+        end_line += ' // group {}'.format(group.name)
+    result.append(end_line)
+
     return result
 
 
@@ -228,16 +250,16 @@ def cdl(element, indent=0, plus_indent=_N_INDENT_DEFAULT):
 
     """
     if isinstance(element, nco.Group):
-        result = _group_cdl(element, indent=indent, plus_indent=plus_indent,
-                            at_root=True)
+        lines = _group_cdl_lines(element, indent=indent,
+                                 plus_indent=plus_indent)
     elif isinstance(element, nco.Variable):
-        result = _var_cdl(element)
+        lines = _var_cdl_lines(element)
     elif isinstance(element, nco.Attribute):
-        result = _attr_cdl(element)
+        lines = [_bare_attr_cdl_string(element)]
     elif isinstance(element, nco.Dimension):
-        result = _dim_cdl(element)
+        lines = _dim_cdl_lines(element)
     else:
-        raise ValueError( '{} is not a recognised NcObj element.'.format(
+        raise ValueError('{} is not a recognised NcObj element.'.format(
             element))
-    return result
 
+    return '\n'.join(lines)

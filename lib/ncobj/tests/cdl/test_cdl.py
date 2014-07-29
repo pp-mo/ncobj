@@ -1,5 +1,4 @@
 import unittest as tests
-import netCDF4
 
 try:
     import netCDF4 as nc4
@@ -30,14 +29,8 @@ def _make_complex_group():
     g = og(
         'temp',
         aa=[oa('a_root_attr_num', 1),
-            oa('q_root_attr_str', 'xyz'),
-            oa('b_root_attr_vec', np.array([1.2, 3, 4])),
-            oa('z_root_attr_num', 1),
             oa('c_root_attr_str', 'xyz'),
-            oa('l_root_attr_vec', np.array([1.2, 3, 4])),
-            oa('d_root_attr_num', 1),
-            oa('f_root_attr_str', 'xyz'),
-            oa('n_root_attr_vec', np.array([1.2, 3, 4]))],
+            oa('b_root_attr_vec', np.array([1.2, 3, 4]))],
         dd=[od('root_dim_x', 2)],
         vv=[ov('root_var_1',
                dd=[od('root_dim_x')],
@@ -62,53 +55,47 @@ def _make_complex_group():
     return g
 
 # Define a CDL string matching the above.
-_complex_cdl = """
-    netcdf temp {
+_complex_cdl = """\
+netcdf temp {
 
-    dimensions:
-        root_dim_x = 2 ;
+dimensions:
+    root_dim_x = 2 ;
 
+variables:
+    double root_var_1(root_dim_x) ;
+        root_var_1:root_var_attr_1 = 11L ;
+    float root_var_2_scalar ;
+
+// global attributes:
+    :a_root_attr_num = 1L ;
+    :b_root_attr_vec = 1.2, 3., 4. ;
+    :c_root_attr_str = "xyz" ;
+
+group: sg_2_empty {
+} // group sg_2_empty
+
+group: subgroup {
+
+dimensions:
+    subgroup_dim_y = 3 ;
+
+variables:
+    double subgroup_var(root_dim_x, subgroup_dim_y) ;
+        subgroup_var:subgroup_var_attr = 57.5 ;
+
+// group attributes:
+    :subgroup_attr = "qq" ;
+    
+    group: sub_sub_group {
+    
     variables:
-        double root_var_1(root_dim_x) ;
-                root_var_1:root_var_attr_1 = 11L ;
-        float root_var_2_scalar ;
-
-    // global attributes:
-        :a_root_attr_num = 1L ;
-        :b_root_attr_vec = 1.2, 3., 4. ;
-        :c_root_attr_str = "xyz" ;
-        :d_root_attr_num = 1L ;
-        :f_root_attr_str = "xyz" ;
-        :l_root_attr_vec = 1.2, 3., 4. ;
-        :n_root_attr_vec = 1.2, 3., 4. ;
-        :q_root_attr_str = "xyz" ;
-        :z_root_attr_num = 1L ;
-
-    group: sg_2_empty {
-    } // group sg_2_empty
-    group: subgroup {
-
-    dimensions:
-        subgroup_dim_y = 3 ;
-
-    variables:
-        double subgroup_var(root_dim_x, subgroup_dim_y) ;
-                subgroup_var:subgroup_var_attr = 57.5 ;
-
+        double sub_sub_group_var(subgroup_dim_y) ;
+    
     // group attributes:
-        :subgroup_attr = "qq" ;
-
-        group: sub_sub_group {
-
-        variables:
-            double sub_sub_group_var(subgroup_dim_y) ;
-
-        // group attributes:
-            :sub_sub_group_attr = "this" ;
-        } // group sub_sub_group
-    } // group subgroup
-    }
-    """
+        :sub_sub_group_attr = "this" ;
+    } // group sub_sub_group
+} // group subgroup
+}"""
 
 
 class Test_comparable_cdl(tests.TestCase):
@@ -291,14 +278,94 @@ class Test_cdl__group(tests.TestCase):
         g = _make_complex_group()
         result_cdl = cdl(g)
         expect_cdl = _complex_cdl[:]
-        # Compare, but skipping comments and whitespace.
-        result_cmp = ncdl.comparable_cdl(result_cdl)
-        expect_cmp = ncdl.comparable_cdl(expect_cdl)
-        if result_cmp != expect_cmp:
+        if result_cdl != expect_cdl:
             # (Debug output)
             print_linewise_diffs('cdl output', 'expected',
-                                 result_cmp, expect_cmp)
-        self.assertEqual(result_cmp, expect_cmp)
+                                 result_cdl, expect_cdl)
+        self.assertEqual(result_cdl, expect_cdl)
+
+    def test_empty(self):
+        g = og('group_name')
+        result = cdl(g)
+        self.assertEqual(result, 'netcdf group_name {\n}')
+
+    def test_attr(self):
+        g = og('group_name',
+               aa = [oa('x', 2)])
+        result = cdl(g)
+        self.assertEqual(result,
+                         'netcdf group_name {\n'
+                         '\n'
+                         '// global attributes:\n'
+                         '    :x = 2L ;\n'
+                         '}')
+
+    def test_dim(self):
+        g = og('group_name',
+               dd = [od('x', 2)])
+        result = cdl(g)
+        self.assertEqual(result,
+                         'netcdf group_name {\n'
+                         '\n'
+                         'dimensions:\n'
+                         '    x = 2 ;\n'
+                         '}')
+
+    def test_var(self):
+        g = og('group_name',
+               vv = [ov('x', data=np.array(1.0))])
+        result = cdl(g)
+        self.assertEqual(result,
+                         'netcdf group_name {\n'
+                         '\n'
+                         'variables:\n'
+                         '    double x ;\n'
+                         '}')
+
+    def test_inner_groups(self):
+        g = og('group_name',
+               gg = [og('sub_group')])
+        result = cdl(g)
+        self.assertEqual(result,
+                         'netcdf group_name {\n'
+                         '\n'
+                         'group: sub_group {\n'
+                         '} // group sub_group\n'
+                         '}')
+
+    def test_inner_group_attr(self):
+        g = og('group_name',
+               gg = [og('sub_group',
+                        aa=[oa('x', 2)])])
+        result = cdl(g)
+        self.assertEqual(result,
+                         'netcdf group_name {\n'
+                         '\n'
+                         'group: sub_group {\n'
+                         '\n'
+                         '// group attributes:\n'
+                         '    :x = 2L ;\n'
+                         '} // group sub_group\n'
+                         '}')
+
+    def test_inner_inner_group_attr(self):
+        g = og('group_name',
+               gg = [og('sub_group',
+                        gg=[og('sub_sub_group',
+                               aa=[oa('x', 2)])])])
+        result = cdl(g)
+        self.assertEqual(result,
+                         'netcdf group_name {\n'
+                         '\n'
+                         'group: sub_group {\n'
+                         '    \n'
+                         '    group: sub_sub_group {\n'
+                         '    \n'
+                         '    // group attributes:\n'
+                         '        :x = 2L ;\n'
+                         '    } // group sub_sub_group\n'
+                         '} // group sub_group\n'
+                         '}')
 
 
 if _nc4_available:
