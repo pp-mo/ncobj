@@ -27,6 +27,5 @@ print g_flattened_cdl
 print '----------------'
 
 g_flat_eg = egs.eg_simple_flat()
-#g_flat_eg_cdl = cdl(g_flat_eg)
 print
 print 'Result matches flat-form reference : ', g_flattened == g_flat_eg

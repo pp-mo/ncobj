@@ -15,7 +15,6 @@ import netCDF4
 import ncobj.nc_dataset as ncds
 import ncobj.cdl as ncdl
 from ncobj.cdl import cdl
-from ncobj.tests.cdl.test_cdl import print_linewise_diffs
 
 
 def check_file_cdl(file_path):
@@ -40,7 +39,6 @@ def check_file_cdl(file_path):
         print 'OK    (ncdump and ncobj output EQUAL)'
     else:
         print 'FAIL: ncdump and ncobj output differ..'
-        print_linewise_diffs('ncobj', 'ncdump', g_cdl_std, f_cdl_std)
     print
 
 

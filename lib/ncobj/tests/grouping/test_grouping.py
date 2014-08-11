@@ -452,13 +452,10 @@ class Test_has_no_missing_dims(_BaseTest_Grouping):
 class Test_complete(_BaseTest_Grouping):
     def do_complete(self, group):
         # complete a group, and check that re-calling has no effect
-#        print 'BEFORE:\n', group
         complete(group)
         self.assertTrue(has_no_missing_dims(group))
-#        print 'FIRSTPASS:\n', group
         firstpass_result = group.detached_copy()
         complete(group)
-#        print 'REDONE:\n', group
         self.assertEqual(group, firstpass_result)
 
     def test_empty(self):
@@ -610,7 +607,7 @@ class Test_complete(_BaseTest_Grouping):
         self.assertEqual(list(g.dimensions), [od('z', 3)])
         self.assertEqual(list(g.groups['subgroup'].dimensions), [dim_x_def])
         self.assertIs(g.groups['subgroup'].dimensions['x'], dim_x_def)
-        
+
     def test_simple_data(self):
         g = og('', vv=[ov('v', dd=[od('y'), od('x')],
                           data=_mockdata((15, 20)))])

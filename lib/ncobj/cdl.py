@@ -1,6 +1,5 @@
 """
-Utility to produce a CDL-style readable output summary for an
-:class:`ncobj.Group`.
+Utility to produce CDL-style output for an :class:`ncobj.Element`.
 
 Output is designed to be similar to "ncdump -h".  Variables data is completely
 omitted.
@@ -10,10 +9,7 @@ ncdump output.
 
 Extra notes:
 
- * The rendering of attribute values is still very primitive, and may not
-    always work properly.
-
- * Only ncobj supported features are managed (so no user-types at all).
+ * Only ncobj supported features are managed (so currently no user-types).
 
  * Attributes containing vectors of strings are not handled, but at present
     netCDF4-python can not manage these anyway.

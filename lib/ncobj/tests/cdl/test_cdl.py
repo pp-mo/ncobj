@@ -15,13 +15,6 @@ import ncobj.cdl as ncdl
 from ncobj.cdl import cdl, comparable_cdl
 
 
-def print_linewise_diffs(id1, id2, str1, str2):
-    for il, (l1, l2) in enumerate(zip(str1.split('\n'), str2.split('\n'))):
-        if l1 != l2:
-            print ' {:>10s} #{:04d}:  {}'.format(id1, il, l1)
-            print '  {:>10s}#{:04d}:  {}'.format(id2, il, l2)
-
-
 # Define a complex test group.
 # NOTE: this also wants 'completing', which is a bit heavy for import code,
 # so do that during testcode instead.
@@ -125,11 +118,6 @@ class Test_comparable_cdl(tests.TestCase):
             "}",
             "end"])
         result_str = comparable_cdl(test_str)
-        if result_str != expected_str:
-            # (Debug output)
-            print 'results do not match:'
-            print_linewise_diffs('result', 'expected',
-                                 result_str, expected_str)
         self.assertEqual(result_str, expected_str)
 
 
@@ -201,7 +189,6 @@ class Test_cdl__dimension(tests.TestCase):
         self.assertEqual(result, 'x = UNLIMITED ;')
 
 
-
 class Test_cdl__variable(tests.TestCase):
     def test_scalar(self):
         result = cdl(ov('x', data=np.array(3.21, dtype=np.float32)))
@@ -217,8 +204,8 @@ class Test_cdl__variable(tests.TestCase):
 
     def test_attrs(self):
         result = cdl(ov('x', dd=[od('p'), od('q')],
-                             aa=[oa('n1', 3), oa('r1', 1.24)],
-                             data=np.array(1.0)))
+                        aa=[oa('n1', 3), oa('r1', 1.24)],
+                        data=np.array(1.0)))
         self.assertEqual(result,
                          'double x(p, q) ;\n'
                          '    x:n1 = 3L ;\n'
@@ -258,7 +245,7 @@ class Test_cdl__variable(tests.TestCase):
 
     def test_float(self):
         result = cdl(ov('x', data=np.array(1.0,
-                                                dtype=np.dtype('float32'))))
+                                           dtype=np.dtype('float32'))))
         self.assertEqual(result, 'float x ;')
 
     def test_double(self):
@@ -267,10 +254,8 @@ class Test_cdl__variable(tests.TestCase):
 
     def test_chars(self):
         result = cdl(ov('x', dd=[od('STRLEN_4', 4)],
-                             data=np.array(['t', 'h', 'i', 's'])))
+                        data=np.array(['t', 'h', 'i', 's'])))
         self.assertEqual(result, 'char x(STRLEN_4) ;')
-
-
 
 
 class Test_cdl__group(tests.TestCase):
@@ -278,10 +263,6 @@ class Test_cdl__group(tests.TestCase):
         g = _make_complex_group()
         result_cdl = cdl(g)
         expect_cdl = _complex_cdl[:]
-        if result_cdl != expect_cdl:
-            # (Debug output)
-            print_linewise_diffs('cdl output', 'expected',
-                                 result_cdl, expect_cdl)
         self.assertEqual(result_cdl, expect_cdl)
 
     def test_empty(self):
@@ -290,8 +271,7 @@ class Test_cdl__group(tests.TestCase):
         self.assertEqual(result, 'netcdf group_name {\n}')
 
     def test_attr(self):
-        g = og('group_name',
-               aa = [oa('x', 2)])
+        g = og('group_name', aa=[oa('x', 2)])
         result = cdl(g)
         self.assertEqual(result,
                          'netcdf group_name {\n'
@@ -301,8 +281,7 @@ class Test_cdl__group(tests.TestCase):
                          '}')
 
     def test_dim(self):
-        g = og('group_name',
-               dd = [od('x', 2)])
+        g = og('group_name', dd=[od('x', 2)])
         result = cdl(g)
         self.assertEqual(result,
                          'netcdf group_name {\n'
@@ -312,8 +291,7 @@ class Test_cdl__group(tests.TestCase):
                          '}')
 
     def test_var(self):
-        g = og('group_name',
-               vv = [ov('x', data=np.array(1.0))])
+        g = og('group_name', vv=[ov('x', data=np.array(1.0))])
         result = cdl(g)
         self.assertEqual(result,
                          'netcdf group_name {\n'
@@ -323,8 +301,7 @@ class Test_cdl__group(tests.TestCase):
                          '}')
 
     def test_inner_groups(self):
-        g = og('group_name',
-               gg = [og('sub_group')])
+        g = og('group_name', gg=[og('sub_group')])
         result = cdl(g)
         self.assertEqual(result,
                          'netcdf group_name {\n'
@@ -335,8 +312,8 @@ class Test_cdl__group(tests.TestCase):
 
     def test_inner_group_attr(self):
         g = og('group_name',
-               gg = [og('sub_group',
-                        aa=[oa('x', 2)])])
+               gg=[og('sub_group',
+                      aa=[oa('x', 2)])])
         result = cdl(g)
         self.assertEqual(result,
                          'netcdf group_name {\n'
@@ -350,9 +327,9 @@ class Test_cdl__group(tests.TestCase):
 
     def test_inner_inner_group_attr(self):
         g = og('group_name',
-               gg = [og('sub_group',
-                        gg=[og('sub_sub_group',
-                               aa=[oa('x', 2)])])])
+               gg=[og('sub_group',
+                      gg=[og('sub_sub_group',
+                             aa=[oa('x', 2)])])])
         result = cdl(g)
         self.assertEqual(result,
                          'netcdf group_name {\n'
@@ -401,9 +378,6 @@ if _nc4_available:
 
             expected = strip_lines(ncdump_output)
             found = strip_lines(results)
-            if expected != found:
-                # (Debug output)
-                print_linewise_diffs('expected', 'got', expected, found)
             self.assertEqual(found, expected)
 
     class Test_cdl__alltypes(tests.TestCase):
@@ -460,9 +434,6 @@ if _nc4_available:
 
                 expected = sort_lines(strip_lines(ncdump_output))
                 found = sort_lines(strip_lines(cdl_results))
-                if expected != found:
-                    # (Debug output)
-                    print_linewise_diffs('expected', 'got', expected, found)
                 self.assertEqual(found, expected)
 
             finally:

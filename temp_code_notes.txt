@@ -65,11 +65,3 @@ possible alternative create-defs-locally:
 * allow nc_dataset.read to open a netCDF4 dataset + close when done.
     * N.B. may link into whole 'change the existing' area
 
-
-BUGS
-====
-CDL is currently failing for variables of type 'string'.
-    -- see file "test.nc" (not currently in Iris testdata or samples)
-    Need to look up numpy and netcdf usage for these possibilities.
-    Then add a testcase.
-AND SIMILAR for variables of 'int16' type.

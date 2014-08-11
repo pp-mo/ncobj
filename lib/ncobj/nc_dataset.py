@@ -89,12 +89,7 @@ def read(dataset):
     return _make_group('', dataset)
 
 
-DEBUG_WRITES = False
-
-
 def _save_nc_dim(ds, dim):
-    if DEBUG_WRITES:
-        print "Writing      dim: (in {}) {}".format(ds.path, dim.name)
     ds.createDimension(dim.name, 0 if dim.unlimited else dim.length)
 
 
@@ -102,8 +97,6 @@ _MAGIC_FILLVALUE_NAME = '_FillValue'
 
 
 def _save_nc_var(ds, var):
-    if DEBUG_WRITES:
-        print "Writing      var: (in {}) {}".format(ds.path, var.name)
     attr_names = var.attributes.names()
     if _MAGIC_FILLVALUE_NAME in attr_names:
         attr_names.remove(_MAGIC_FILLVALUE_NAME)
@@ -120,22 +113,15 @@ def _save_nc_var(ds, var):
 
 
 def _save_nc_attr(ds, attr):
-    if DEBUG_WRITES:
-        print "Writing     attr: (in {}) {}".format(ds.path, attr.name)
     ds.setncattr(attr.name, attr.value)
 
 
 def _save_var_attr(ds_var, attr):
-    if DEBUG_WRITES:
-        print "Writing var-attr: (in {}) {}".format(ds_var._name, attr.name)
     ds_var.setncattr(attr.name, attr.value)
 
 
 def _save_group(ds, group):
     # order: dimensions, variables, attributes, sub-groups
-    if DEBUG_WRITES:
-        parent_path = getattr(ds.parent, 'path', '')
-        print "Writing    group: (in {}) {}".format(parent_path, group.name)
     for dim_name in sorted(group.dimensions.names()):
         _save_nc_dim(ds, group.dimensions[dim_name])
     for var_name in sorted(group.variables.names()):

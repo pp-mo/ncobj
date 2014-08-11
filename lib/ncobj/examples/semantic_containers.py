@@ -111,9 +111,9 @@ REFERENCE_ATTRIBUTES_NAMES_AND_TYPES = [
     ('coordinates', nco.Variable),
     ('ancillary_variables', nco.Variable),
     ('bounds', nco.Variable),
-    #('cell_measures', nco.Variable),
+    # ('cell_measures', nco.Variable),
     #    # N.B. form is wrong: "name: var"
-    #('cell_methods', nco.Variable),
+    # ('cell_methods', nco.Variable),
     #   # N.B. even worse.
     #   # This starts to look like we will need associated encode/decode
     #   # methods for each reference attribute :-(

@@ -13,7 +13,7 @@ def _dummy_data(shape, dtype=None):
     # Make a numpy array with the right shape+dtype, but no real data.
     array = np.array(0, dtype=dtype)
     for dim_len in shape:
-        dim_vec = np.zeros([1] * array.ndim + [dim_len]) 
+        dim_vec = np.zeros([1] * array.ndim + [dim_len])
         array = array[..., None]
         array, _ = np.broadcast_arrays(array, dim_vec)
     return array
