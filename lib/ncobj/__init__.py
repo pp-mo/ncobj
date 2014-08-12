@@ -4,16 +4,16 @@ An abstract representation of NetCDF data for manipulation purposes.
 The purpose of this is to allow arbitrary manipulation of NetCDF data,
 decoupled from the NetCDF file API.
 
-For example:
+For example::
 
-with netCDF4.Dataset(file_in_path) as ds_in:
-    in_group = ncobj.nc_dataset.read(ds_in)
-    out_group = ncobj.Group()
-    for var in in_group.variables:
-        if var.name.startswith('my_'):
-            out_group.variables.add(var)
-    out_group.attributes.add(ncobj.Attribute('Notes', 'Subset for key=X.'))
-    ncobj.nc_dataset.write(file_out_path, out_group)
+    with netCDF4.Dataset(file_in_path) as ds_in:
+        in_group = ncobj.nc_dataset.read(ds_in)
+        out_group = ncobj.Group()
+        for var in in_group.variables:
+            if var.name.startswith('my_'):
+                out_group.variables.add(var)
+        out_group.attributes.add(ncobj.Attribute('Notes', 'Subset for key=X.'))
+        ncobj.nc_dataset.write(file_out_path, out_group)
 
 
 A separate 'nc_dataset' submodule provides an interface for reading and
