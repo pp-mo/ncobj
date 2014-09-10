@@ -15,19 +15,29 @@ import ncobj.cdl as ncdl
 from ncobj.cdl import cdl, comparable_cdl
 
 
+def _long(x):
+    """
+    Force a 64-bit integer value.
+
+    Used to avoid test discrepancies between 32- and 64-bit systems.
+
+    """
+    return np.array(x, dtype=np.int64)
+
+
 # Define a complex test group.
 # NOTE: this also wants 'completing', which is a bit heavy for import code,
 # so do that during testcode instead.
 def _make_complex_group():
     g = og(
         'temp',
-        aa=[oa('a_root_attr_num', 1),
+        aa=[oa('a_root_attr_num', _long(1)),
             oa('c_root_attr_str', 'xyz'),
             oa('b_root_attr_vec', np.array([1.2, 3, 4]))],
         dd=[od('root_dim_x', 2)],
         vv=[ov('root_var_1',
                dd=[od('root_dim_x')],
-               aa=[oa('root_var_attr_1', 11)],
+               aa=[oa('root_var_attr_1', _long(11))],
                data=np.zeros((2))),
             ov('root_var_2_scalar',
                data=np.array(3.15, dtype=np.float32))],
@@ -131,7 +141,7 @@ class Test_cdl__attr(tests.TestCase):
         self.assertEqual(result, 'x = 3.21, 1.23')
 
     def test_int(self):
-        result = cdl(oa('x', 3))
+        result = cdl(oa('x', _long(3)))
         self.assertEqual(result, 'x = 3L')
 
     def test_string(self):
@@ -204,7 +214,7 @@ class Test_cdl__variable(tests.TestCase):
 
     def test_attrs(self):
         result = cdl(ov('x', dd=[od('p'), od('q')],
-                        aa=[oa('n1', 3), oa('r1', 1.24)],
+                        aa=[oa('n1', _long(3)), oa('r1', 1.24)],
                         data=np.array(1.0)))
         self.assertEqual(result,
                          'double x(p, q) ;\n'
@@ -271,7 +281,7 @@ class Test_cdl__group(tests.TestCase):
         self.assertEqual(result, 'netcdf group_name {\n}')
 
     def test_attr(self):
-        g = og('group_name', aa=[oa('x', 2)])
+        g = og('group_name', aa=[oa('x', _long(2))])
         result = cdl(g)
         self.assertEqual(result,
                          'netcdf group_name {\n'
@@ -313,7 +323,7 @@ class Test_cdl__group(tests.TestCase):
     def test_inner_group_attr(self):
         g = og('group_name',
                gg=[og('sub_group',
-                      aa=[oa('x', 2)])])
+                      aa=[oa('x', _long(2))])])
         result = cdl(g)
         self.assertEqual(result,
                          'netcdf group_name {\n'
@@ -329,7 +339,7 @@ class Test_cdl__group(tests.TestCase):
         g = og('group_name',
                gg=[og('sub_group',
                       gg=[og('sub_sub_group',
-                             aa=[oa('x', 2)])])])
+                             aa=[oa('x', _long(2))])])])
         result = cdl(g)
         self.assertEqual(result,
                          'netcdf group_name {\n'
