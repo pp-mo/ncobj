@@ -1,7 +1,12 @@
 import unittest as tests
 
 
-import netCDF4
+try:
+    import netCDF4 as nc4
+    _nc4_available = True
+except ImportError:
+    _nc4_available = False
+
 import numpy as np
 import os
 import os.path
@@ -10,8 +15,8 @@ import os.path
 import ncobj.grouping as ncg
 from ncobj.shorts import og, od, ov, oa
 
-
-from ncobj.nc_dataset import read, write
+if _nc4_available:
+    from ncobj.nc_dataset import read, write
 
 
 _here_dirpath = os.path.dirname(__file__)
@@ -22,6 +27,7 @@ testdata_dirpath = os.path.abspath(os.path.join(_here_dirpath,
 leave_output = False
 
 
+@tests.skip(not _nc4_available)
 class Test_read(tests.TestCase):
     def test_simple(self):
         test_filename = 'units.nc'
@@ -32,6 +38,7 @@ class Test_read(tests.TestCase):
                           g.dimensions['time'])
 
 
+@tests.skip(not _nc4_available)
 class Test_write(tests.TestCase):
     def test_simple_to_path(self):
         test_outfile_name = 'test_simple.nc'
