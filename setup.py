@@ -1,12 +1,16 @@
 from setuptools import setup
-from IPython.core.release import long_description
 
 setup(
     name = "ncobj",
     url='https://github.com/pp-mo/ncobj',
-    download_url = 'https://github.com/pp-mo/ncobj/archive/master.zip',
-    version = "0.3",
-    packages = ['lib/ncobj'],
+    download_url='https://github.com/pp-mo/ncobj/archive/master.zip',
+    version="0.3",
+    packages=['ncobj',
+              'ncobj.examples', 'ncobj.examples.tests',
+              'ncobj.tests', 'ncobj.tests.cdl', 'ncobj.tests.grouping',
+              'ncobj.tests.nc_dataset'],
+    package_dir={'': 'lib'},
+    package_data={'ncobj': ['tests/nc_dataset/testdata/*']},
     author='ppmo',
     author_email='patrick.peglar@metoffice.gov.uk',
     license='GPL',
