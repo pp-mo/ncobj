@@ -1,6 +1,8 @@
-Latest wants, as-at 20140416
+Latest wants, as-at 2014-09-10
 
-Implement basic real file i/o (nearly ready now)
+Track open-for-read netCDF files for simpler input-file usage
+    open direct from nc_dataset 'read' operation
+    support use as context-manager
 
 Support for user types, along the lines of exiting Dimensions
     compound (aka structures)

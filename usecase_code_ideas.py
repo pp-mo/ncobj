@@ -20,7 +20,7 @@ def EG_prune_dimensions(group):
         dims_used = []
         for var in ncg.all_variables(group):
             dims_used += var.dimensions
-        for dim in ncg.all_contents_oftype(group, Dimension):
+        for dim in ncg.all_dimensions(group):
             if dim not in dims_used:
                 dim.remove()
 
