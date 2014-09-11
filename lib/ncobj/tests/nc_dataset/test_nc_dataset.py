@@ -2,7 +2,7 @@ import unittest as tests
 
 
 try:
-    import netCDF4 as nc4
+    import netCDF4
     _nc4_available = True
 except ImportError:
     _nc4_available = False
@@ -27,7 +27,7 @@ testdata_dirpath = os.path.abspath(os.path.join(_here_dirpath,
 leave_output = False
 
 
-@tests.skip(not _nc4_available)
+@tests.skipIf(not _nc4_available, 'netCDF4 not available')
 class Test_read(tests.TestCase):
     def test_simple(self):
         test_filename = 'units.nc'
@@ -38,7 +38,7 @@ class Test_read(tests.TestCase):
                           g.dimensions['time'])
 
 
-@tests.skip(not _nc4_available)
+@tests.skipIf(not _nc4_available, 'netCDF4 not available')
 class Test_write(tests.TestCase):
     def test_simple_to_path(self):
         test_outfile_name = 'test_simple.nc'
