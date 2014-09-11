@@ -17,12 +17,11 @@ import ncobj.nc_dataset as nc_files
 
 
 def EG_prune_dimensions(group):
-        dims_used = []
-        for var in ncg.all_variables(group):
-            dims_used += var.dimensions
-        for dim in ncg.all_dimensions(group):
-            if dim not in dims_used:
-                dim.remove()
+    dims_used = set(
+        sum((var.dimensions for var in ncg.all_variables(group)), []))
+    for dim in ncg.all_dimensions(group):
+        if dim not in dims_used:
+            dim.remove()
 
 
 def EG_some_variables():
@@ -36,7 +35,7 @@ def EG_some_variables():
     # Delete all-but selected variables.
     varnames = ('temp', 'depth')
     for var in ncg.all_variables(input):
-        if not var.name in var_names:
+        if var.name not in var_names:
             output.variables.add(var)
 
     # Write out.
@@ -77,7 +76,7 @@ def EG_filter_variables():
     varname_ends_exclude = ('_QC', '_stats')
     # Copy selected variables.
     for var in ncg.all_variables(input):
-        if (any(var.name.find(part) >=0
+        if (any(var.name.find(part) >= 0
                 for part in varname_parts_only) and
             not any(var.name.endswith(part)
                     for part in varname_ends_exclude)):
@@ -92,11 +91,11 @@ def EG_extract_region():
     input_path = os.path.join(basedir, 'test.nc')
     output_path = os.path.join(basedir, 'test_out.nc')
     depth_start, depth_end = (50.0, 550.0)
-    
+
     input = nc_files.read(input_path)
     depth_dim = input.dimensions['depth']
     depth_coord = input.variables['depth']
-    
+
     # Work out indexing to the part we want
     i_start = np.where(depth_coord[:] >= depth_start)[0][0]
     i_end_indices = np.where(depth_coord[:] >= depth_end)[0]
