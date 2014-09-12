@@ -2,19 +2,24 @@
 An abstract representation of NetCDF data for manipulation purposes.
 
 The purpose of this is to allow arbitrary manipulation of NetCDF data,
-decoupled from the NetCDF file API.
+decoupled from the netCDF4 file-based API.
 
 For example::
 
+    import ncobj.nc_dataset as ncds
     with netCDF4.Dataset(file_in_path) as ds_in:
-        in_group = ncobj.nc_dataset.read(ds_in)
+        in_group = ncds.read(ds_in)
         out_group = ncobj.Group()
-        for var in in_group.variables:
-            if var.name.startswith('my_'):
-                out_group.variables.add(var)
-        out_group.attributes.add(ncobj.Attribute('Notes', 'Subset for key=X.'))
-        ncobj.nc_dataset.write(file_out_path, out_group)
 
+        # Copy selected variables to output.
+        for var_name in ('measure', 'x_points', 'y_points'):
+            var = in_group.variables[var_name]
+            # Remove any bounds references.
+            var.attributes.pop('bounds', None)
+            out_group.variables.add(var)
+
+        # Save selected variables (includes necessary dimensions).
+        ncds.write(file_out_path, out_group)
 
 A separate 'nc_dataset' submodule provides an interface for reading and
 writing this form to and from NetCDF4.Dataset objects.
