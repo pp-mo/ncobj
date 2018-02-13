@@ -1,6 +1,11 @@
 """
 Module for wrapping an :class:`ncobj.Group` to make it as far as
 possible appear as if it were a :class:`netCDF4.Dataset`.
+This is for read-only purposes : all dataset-changing methods are missing.
+
+At present this is focussed on delivering the ability to load these
+quasi-datasets into the Iris project (https://github.com/SciTools/iris) :
+The emulation of any behaviours *not* used there are currently uncertain.
 
 """
 
@@ -43,12 +48,14 @@ class DimensionMimic(Nc4ComponentMimic):
 
     """
     @property
-    def length(self):
-        return self._ncobj.length
+    def size(self):
+        return 0 if self.isunlimited() else self._ncobj.length
 
-    @property
-    def unlimited(self):
-        return self._ncobj.unlimited
+    def __len__(self):
+        return self.size
+
+    def isunlimited(self):
+        return self._ncobj.unlimited or not self._ncobj.length
 
 
 class Nc4ComponentAttrsMimic(Nc4ComponentMimic):
@@ -57,17 +64,14 @@ class Nc4ComponentAttrsMimic(Nc4ComponentMimic):
         return map(_name_as_string, self._ncobj.attributes)
 
     def getncattr(self, attr_name):
-        return self._ncobj.attributes[attr_name].value
-
-    def setncattr(self, name, value):
-        self._ncobj.attributes[name].value = value
-
-    def __getattr__(self, attr_name):
         if attr_name in self._ncobj.attributes.names():
             result = self._ncobj.attributes[attr_name].value
         else:
             raise AttributeError()
         return result
+
+    def __getattr__(self, attr_name):
+        return self.getncattr(attr_name)
 
 
 class VariableMimic(Nc4ComponentAttrsMimic):
@@ -84,11 +88,18 @@ class VariableMimic(Nc4ComponentAttrsMimic):
         return self._ncobj.data.dtype
 
     @property
+    def datatype(self):
+        return self.dtype
+
+    @property
     def dimensions(self):
         return tuple(map(_name_as_string, self._ncobj.dimensions))
 
     def __getitem__(self, keys):
-        return self._ncobj.data[keys]
+        if self.ndim == 0:
+            return self._ncobj.data
+        else:
+            return self._ncobj.data[keys]
 
     @property
     def shape(self):
