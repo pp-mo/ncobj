@@ -22,6 +22,9 @@ Latest web docs : http://pp-mo.github.io/build/html/index.html
 
 Current Status
 --------------
+VERSION "0.4" : 2018-02-13
+ * added "ncobj.nc_fake" module, to make ncobj data mimic a readable fake netCDF4.Dataset
+
 VERSION "0.3" : 2014-09-12
  * Core classes written and full unit tests.
  * File i/o via netCDF4 (ncobj.nc_dataset)
