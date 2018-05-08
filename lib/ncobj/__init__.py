@@ -42,7 +42,7 @@ referenced elements being re-created as required.
 
 """
 from abc import ABCMeta, abstractmethod, abstractproperty
-
+from collections import OrderedDict
 
 import numpy as np
 
@@ -299,7 +299,7 @@ class NcobjContainer(object, metaclass=ABCMeta):
 
         """
         self._in_element = in_element
-        self._content = {}
+        self._content = OrderedDict()
         if contents:
             self.add_allof(contents)
 

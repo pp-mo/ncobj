@@ -108,7 +108,7 @@ def _save_nc_var(ds, var):
                                dimensions=[dim.name for dim in var.dimensions],
                                fill_value=fill_value)
     ds_var[...] = var.data[...]
-    for attr_name in sorted(attr_names):
+    for attr_name in attr_names:
         _save_var_attr(ds_var, var.attributes[attr_name])
 
 
@@ -122,13 +122,13 @@ def _save_var_attr(ds_var, attr):
 
 def _save_group(ds, group):
     # order: dimensions, variables, attributes, sub-groups
-    for dim_name in sorted(group.dimensions.names()):
+    for dim_name in group.dimensions.names():
         _save_nc_dim(ds, group.dimensions[dim_name])
-    for var_name in sorted(group.variables.names()):
+    for var_name in group.variables.names():
         _save_nc_var(ds, group.variables[var_name])
-    for attr_name in sorted(group.attributes.names()):
+    for attr_name in group.attributes.names():
         _save_nc_attr(ds, group.attributes[attr_name])
-    for subgroup_name in sorted(group.groups.names()):
+    for subgroup_name in group.groups.names():
         subgroup = group.groups[subgroup_name]
         ds_subgroup = ds.createGroup(subgroup.name)
         _save_group(ds_subgroup, subgroup)

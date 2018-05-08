@@ -146,7 +146,7 @@ def _elements_lines(elements, cdl_lines_call, indent=_N_INDENT_DEFAULT):
     # Call a CDL-lines function for all of a container's contents, and return
     # the concatenation of all the result lines.
     el_lines = []
-    for el_name in sorted(elements.names()):
+    for el_name in elements.names():
         el_lines.extend(cdl_lines_call(elements[el_name]))
     return _indent_lines(el_lines, n_indent=indent)
 
