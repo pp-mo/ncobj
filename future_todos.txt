@@ -1,4 +1,11 @@
-Latest wants, as-at 2014-09-10
+Latest wants, as-at 2018-05-08
+
+Fix CDL to match later ncdump output, or add flexible tests.
+
+Make Python3 compliant.
+
+Use ordered containers, to preserve file order of variables, dimensions and
+    attributes.
 
 Track open-for-read netCDF files for simpler input-file usage
     open direct from nc_dataset 'read' operation
