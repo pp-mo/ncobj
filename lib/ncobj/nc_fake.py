@@ -61,7 +61,7 @@ class DimensionMimic(Nc4ComponentMimic):
 class Nc4ComponentAttrsMimic(Nc4ComponentMimic):
     """An abstract class for an Nc4ComponentMimic with attribute access."""
     def ncattrs(self):
-        return map(_name_as_string, self._ncobj.attributes)
+        return list(map(_name_as_string, self._ncobj.attributes))
 
     def getncattr(self, attr_name):
         if attr_name in self._ncobj.attributes.names():

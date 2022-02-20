@@ -1,6 +1,6 @@
 import unittest as tests
 
-import mock
+from unittest import mock
 import ncobj
 
 
@@ -52,7 +52,7 @@ class Test_NcObj(tests.TestCase):
     def test_definitions_group__isolated(self):
         with self.assertRaises(ValueError) as err_context:
             self.nco.definitions_group()
-        msg = err_context.exception.message
+        msg = str(err_context.exception)
         self.assertIn('not a definition', msg)
         self.assertIn('container is None', msg)
 
@@ -60,7 +60,7 @@ class Test_NcObj(tests.TestCase):
         self.mock_container.is_definitions = mock.Mock(return_value=False)
         with self.assertRaises(ValueError) as err_context:
             self.nco_contained.definitions_group()
-        msg = err_context.exception.message
+        msg = str(err_context.exception)
         self.assertIn('not a definition', msg)
         self.assertIn('container is <Mock', msg)
 
@@ -76,8 +76,8 @@ class Test_NcObj(tests.TestCase):
 
     def test_rename__contained(self):
         self.nco_contained.rename('newname')
-        self.mock_container.rename_element.assert_called_once__with(
-            'newname')
+        self.mock_container.rename_element.assert_called_once_with(
+            self.nco_contained, 'newname')
 
     def test___ne__iseq(self):
         self.assertEqual(self.nco != self.compares_eq, False)
@@ -356,8 +356,8 @@ class Test_NcobjContainer(tests.TestCase):
 
     def test__iter__(self):
         with self.assertRaises(StopIteration):
-            _ = iter(self.con).next()
-        self.assertEqual(iter(self.con_nonempty).next(), self.content_a)
+            _ = next(iter(self.con))
+        self.assertEqual(next(iter(self.con_nonempty)), self.content_a)
         self.assertTrue(self.content_a not in self.con)
         self.assertTrue(self.content_a in self.con_nonempty)
         self.assertTrue(list(self.con_nonempty),
@@ -498,8 +498,8 @@ if 0:
                                   dtype=float,
                                   data=[])
             self.nco.variables.add(var2)
-            print
-            print self.nco
+            print()
+            print(self.nco)
 
     #    def test_all(self):
     #        nco = NcFile(self.input_dataset)
@@ -508,13 +508,13 @@ if 0:
         def test_exclude_vars(self):
             import ncobj.grouping as og
             for var in og.walk_group_objects(self.nco, ncobj.Variable):
-                print
-                print var
+                print()
+                print(var)
                 if var.name in ('exc_1', 'exc_2'):
                     var.remove()
-            print
-            print 'new result:'
-            print '\n'.join(str(x) for x in og.walk_group_objects(self.nco))
+            print()
+            print('new result:')
+            print('\n'.join(str(x) for x in og.walk_group_objects(self.nco)))
     #        self.nco.write(self.out_file)
 
     #    def test_strip_varattr(self):

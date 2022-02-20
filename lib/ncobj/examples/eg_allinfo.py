@@ -38,10 +38,10 @@ g = og(
 
 
 ncg.complete(g)
-print g
-print
+print(g)
+print()
 file_path = './temp.nc'
 with nc4.Dataset(file_path, 'w') as ds:
     ncf.write(ds, g)
-print
+print()
 os.system('ncdump -h temp.nc')

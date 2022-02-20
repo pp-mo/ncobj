@@ -50,13 +50,12 @@ import numpy as np
 __version__ = '0.4.x'
 
 
-class NcObj(object):
+class NcObj(object, metaclass=ABCMeta):
     """
     A generic (abstract) object representing a named element, aka a NetCDF
     "component".
 
     """
-    __metaclass__ = ABCMeta
 
     @abstractmethod
     def detached_copy(self):
@@ -261,13 +260,12 @@ class Variable(NcObj):
         return repstr + ')'
 
 
-class NcobjContainer(object):
+class NcobjContainer(object, metaclass=ABCMeta):
     """
     A generic (abstract) container object for :class:`NcObj` objects
     (aka "elements").
 
     """
-    __metaclass__ = ABCMeta
 
     @abstractproperty
     # N.B. this should really also be *static*, but apparently can't have this
@@ -326,7 +324,7 @@ class NcobjContainer(object):
                                 self.__class__.__name__))
 
     def _check_element_name(self, name):
-        if not isinstance(name, basestring) or len(name) == 0:
+        if not isinstance(name, str) or len(name) == 0:
             raise ValueError('invalid element name "{}"'.format(name))
 
     def detached_contents_copy(self):
@@ -335,12 +333,12 @@ class NcobjContainer(object):
 
         """
         elements = [element.detached_copy()
-                    for element in self._content.itervalues()]
+                    for element in self._content.values()]
         return self.__class__(contents=elements)
 
     def names(self):
         """Return a list of names of the contained elements."""
-        return self._content.keys()
+        return list(self._content.keys())
 
     def __getitem__(self, name):
         """Return the named element."""
@@ -416,7 +414,7 @@ class NcobjContainer(object):
 
     def remove(self, element):
         """Remove the matching element."""
-        if element not in self._content.values():
+        if element not in list(self._content.values()):
             raise KeyError(element)
         return self.pop(element.name)
 
@@ -436,7 +434,7 @@ class NcobjContainer(object):
 
     def __iter__(self):
         """Iterate over contents."""
-        return self._content.itervalues()
+        return iter(self._content.values())
 
     def __len__(self):
         """Return length."""

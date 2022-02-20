@@ -61,6 +61,7 @@ def comparable_cdl(string):
 
 _DTYPES_TYPE_NAMES = {
     np.dtype('S1'): 'char',
+    np.dtype('<U1'): 'char',
     np.dtype('int8'): 'byte',
     np.dtype('int16'): 'short',
     np.dtype('int32'): 'int',
@@ -91,7 +92,7 @@ _DTYPES_ATTR_SUFFICES = {
 def _bare_attr_cdl_string(attr):
     # Return a CDL string representing an attribute and its value.
     val = attr.value
-    if isinstance(val, basestring):
+    if isinstance(val, str):
         contents_str = '"{}"'.format(val)
         type_str = ''
     else:

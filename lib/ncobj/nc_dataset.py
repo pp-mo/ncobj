@@ -157,7 +157,7 @@ def write(dataset, group):
     # Ready group for output first (any error should lead unchanged).
     ncg.complete(group)
     # Either save to the provided dataset, or open one and save to it.
-    if isinstance(dataset, basestring):
+    if isinstance(dataset, str):
         with netCDF4.Dataset(dataset, 'w') as ds:
             _save_group(ds, group)
     else:
