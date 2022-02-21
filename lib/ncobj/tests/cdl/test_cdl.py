@@ -447,9 +447,6 @@ if _nc4_available:
 
                 expected = sort_lines(strip_lines(ncdump_output))
                 found = sort_lines(strip_lines(cdl_results))
-                exp_lines = set(x.strip() for x in expected.split('\n'))
-                fnd_lines = set(x.strip() for x in found.split('\n'))
-                self.assertEqual(exp_lines ^ fnd_lines, set())
                 self.assertEqual(found, expected)
 
             finally:
