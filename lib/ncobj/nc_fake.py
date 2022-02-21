@@ -12,7 +12,7 @@ The emulation of any behaviours *not* used there are currently uncertain.
 from collections import OrderedDict
 
 
-class Nc4ComponentMimic(object):
+class Nc4ComponentMimic:
     """Abstract class providing general methods for all mimic object types."""
     def __init__(self, nco_component, parent_grp=None):
         """Create a mimic object wrapping a :class:`nco.Ncobj` component."""

@@ -92,7 +92,7 @@ class Test_NcObj(tests.TestCase):
         #  -- that is done in the implementation of the real container.
 
 
-class GenericNcObjTestMixin(object):
+class GenericNcObjTestMixin:
     """Simple functional tests to perform on all derived NcObj types."""
     def test_detached_copy__detached(self):
         test_el = self.test_element

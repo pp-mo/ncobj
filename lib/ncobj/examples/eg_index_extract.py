@@ -5,7 +5,7 @@ import ncobj.grouping as ncg
 from collections import Iterable
 from ncobj.cdl import cdl
 
-class GroupExtractor(object):
+class GroupExtractor:
     """
     An object which can index a `ncobj.Group` over dimensions.
 

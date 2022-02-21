@@ -25,7 +25,7 @@ from ncobj.nc_fake import (DimensionMimic, VariableMimic, GroupMimic,
 from ncobj.shorts import og, od, ov, oa
 
 
-class MixinNcFakeTest(object):
+class MixinNcFakeTest:
     def _make_temp_dataset(self):
         self._tempdir = tempfile.mkdtemp()
         self.ds = nc.Dataset(os.path.join(self._tempdir, 'tmp.nc'), 'w')
