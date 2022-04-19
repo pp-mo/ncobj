@@ -22,7 +22,7 @@ Latest web docs : http://pp-mo.github.io/build/html/index.html
 
 Current Status
 --------------
-Important changes in the offing ([branch py3](https://github.com/pp-mo/ncobj/tree/py3)):
+Important changes in the offing ([branch py3](https://github.com/pp-mo/ncobj/pull/7)):
  * drop Python2 + transition to Python3
  * adopt ordered containers throughout : accepting that ordering is a "real" property of datasets
  
