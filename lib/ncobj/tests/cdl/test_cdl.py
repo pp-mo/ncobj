@@ -382,7 +382,7 @@ if _nc4_available:
                 with nc4.Dataset(file_path, 'w') as ds:
                     ncf.write(ds, g)
                 results = subprocess.check_output(
-                    'ncdump -h ' + file_path, shell=True)
+                    'ncdump -h ' + file_path, shell=True).decode()
             finally:
                 shutil.rmtree(file_dirpath)
 
@@ -401,7 +401,10 @@ if _nc4_available:
 
                 # Create variables + attributes of all netcdf basic types.
                 for np_type, type_name in \
-                        ncdl._DTYPES_TYPE_NAMES.iteritems():
+                        ncdl._DTYPES_TYPE_NAMES.items():
+                    if np_type == np.dtype('<U1'):
+                        # This is an alias for 'S1'
+                        continue
                     if type_name == 'char':
                         scalar = 'A'
                         array = 'String_data'
@@ -435,7 +438,7 @@ if _nc4_available:
                     _write_testdata(ds)
 
                 ncdump_output = subprocess.check_output(
-                    'ncdump -h ' + file_path, shell=True)
+                    'ncdump -h ' + file_path, shell=True).decode()
 
                 with nc4.Dataset(file_path, 'r') as ds:
                     read_data = ncf.read(ds)

@@ -5,7 +5,7 @@ import ncobj.grouping as ncg
 from collections import Iterable
 from ncobj.cdl import cdl
 
-class GroupExtractor(object):
+class GroupExtractor:
     """
     An object which can index a `ncobj.Group` over dimensions.
 
@@ -87,36 +87,36 @@ test_group = og(
 
 def show_results(extracted):
     #print extracted
-    print cdl(extracted)
-    print 'vars data: \n' + '\n'.join("{}:{}".format(var.name, var.data)
-                                      for var in ncg.all_variables(extracted))
+    print(cdl(extracted))
+    print('vars data: \n' + '\n'.join("{}:{}".format(var.name, var.data)
+                                      for var in ncg.all_variables(extracted)))
 
-print 'original'
+print('original')
 show_results(test_group)
 
 extract = GroupExtractor(test_group, 'x', 'y')
 
-print
-print '-------------'
-print 'x,y[1,2]'
+print()
+print('-------------')
+print('x,y[1,2]')
 show_results(extract[1, 2])
 
-print
-print '-------------'
-print 'x,y[2]'
+print()
+print('-------------')
+print('x,y[2]')
 show_results(extract[2])
 
-print
-print '-------------'
-print 'x,y[:, 2]'
+print()
+print('-------------')
+print('x,y[:, 2]')
 show_results(extract[:, 2])
 
-print
-print '-------------'
-print 'x,y[:2]'
+print()
+print('-------------')
+print('x,y[:2]')
 show_results(extract[:2])
 
-print
-print '-------------'
-print 'x,y[:, 2:]'
+print()
+print('-------------')
+print('x,y[:, 2:]')
 show_results(extract[:, 2:])

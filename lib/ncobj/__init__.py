@@ -42,7 +42,7 @@ referenced elements being re-created as required.
 
 """
 from abc import ABCMeta, abstractmethod, abstractproperty
-
+from collections import OrderedDict
 
 import numpy as np
 
@@ -50,13 +50,12 @@ import numpy as np
 __version__ = '0.4.x'
 
 
-class NcObj(object):
+class NcObj(metaclass=ABCMeta):
     """
     A generic (abstract) object representing a named element, aka a NetCDF
     "component".
 
     """
-    __metaclass__ = ABCMeta
 
     @abstractmethod
     def detached_copy(self):
@@ -261,20 +260,16 @@ class Variable(NcObj):
         return repstr + ')'
 
 
-class NcobjContainer(object):
+class NcobjContainer(metaclass=ABCMeta):
     """
     A generic (abstract) container object for :class:`NcObj` objects
     (aka "elements").
 
     """
-    __metaclass__ = ABCMeta
 
-    @abstractproperty
-    # N.B. this should really also be *static*, but apparently can't have this
-    # in Python 2.  Ref: http://bugs.python.org/issue5867
-    def element_type(self):
-        """The type (class) of elements this can contain."""
-        return None
+    # N.B. effectively this should be 'abstract'
+    #: The type (class) of elements this can contain.
+    element_type = None
 
     def __init__(self, contents=None, in_element=None):
         """
@@ -301,7 +296,7 @@ class NcobjContainer(object):
 
         """
         self._in_element = in_element
-        self._content = {}
+        self._content = OrderedDict()
         if contents:
             self.add_allof(contents)
 
@@ -326,7 +321,7 @@ class NcobjContainer(object):
                                 self.__class__.__name__))
 
     def _check_element_name(self, name):
-        if not isinstance(name, basestring) or len(name) == 0:
+        if not isinstance(name, str) or len(name) == 0:
             raise ValueError('invalid element name "{}"'.format(name))
 
     def detached_contents_copy(self):
@@ -335,12 +330,12 @@ class NcobjContainer(object):
 
         """
         elements = [element.detached_copy()
-                    for element in self._content.itervalues()]
+                    for element in self._content.values()]
         return self.__class__(contents=elements)
 
     def names(self):
         """Return a list of names of the contained elements."""
-        return self._content.keys()
+        return list(self._content.keys())
 
     def __getitem__(self, name):
         """Return the named element."""
@@ -416,7 +411,7 @@ class NcobjContainer(object):
 
     def remove(self, element):
         """Remove the matching element."""
-        if element not in self._content.values():
+        if element not in list(self._content.values()):
             raise KeyError(element)
         return self.pop(element.name)
 
@@ -436,7 +431,7 @@ class NcobjContainer(object):
 
     def __iter__(self):
         """Iterate over contents."""
-        return self._content.itervalues()
+        return iter(self._content.values())
 
     def __len__(self):
         """Return length."""
@@ -527,31 +522,24 @@ class Group(NcObj):
 
 class NcAttributesContainer(NcobjContainer):
     """An :class:`Attribute` container."""
-    @property
-    def element_type(self):
-        return Attribute
+    element_type = Attribute
 
 
 class NcDimensionsContainer(NcobjContainer):
     """A :class:`Dimension` container."""
-    @property
-    def element_type(self):
-        return Dimension
+    element_type = Dimension
 
 
 class NcVariablesContainer(NcobjContainer):
     """A :class:`Variable` container."""
-    @property
-    def element_type(self):
-        return Variable
-        # TODO: wrap generic contents handling to allow specifying dims by name
+    element_type = Variable
+
+    # TODO: wrap generic contents handling to allow specifying dims by name
 
 
 class NcGroupsContainer(NcobjContainer):
     """A :class:`Group` container."""
-    @property
-    def element_type(self):
-        return Group
+    element_type = Group
 
     def _setitem_ref_or_copy(self, name, element, detached_copy=False):
         NcobjContainer._setitem_ref_or_copy(self, name, element,

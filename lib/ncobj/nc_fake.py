@@ -12,7 +12,7 @@ The emulation of any behaviours *not* used there are currently uncertain.
 from collections import OrderedDict
 
 
-class Nc4ComponentMimic(object):
+class Nc4ComponentMimic:
     """Abstract class providing general methods for all mimic object types."""
     def __init__(self, nco_component, parent_grp=None):
         """Create a mimic object wrapping a :class:`nco.Ncobj` component."""
@@ -61,7 +61,7 @@ class DimensionMimic(Nc4ComponentMimic):
 class Nc4ComponentAttrsMimic(Nc4ComponentMimic):
     """An abstract class for an Nc4ComponentMimic with attribute access."""
     def ncattrs(self):
-        return map(_name_as_string, self._ncobj.attributes)
+        return list(map(_name_as_string, self._ncobj.attributes))
 
     def getncattr(self, attr_name):
         if attr_name in self._ncobj.attributes.names():

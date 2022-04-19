@@ -25,7 +25,7 @@ from ncobj.nc_fake import (DimensionMimic, VariableMimic, GroupMimic,
 from ncobj.shorts import og, od, ov, oa
 
 
-class MixinNcFakeTest(object):
+class MixinNcFakeTest:
     def _make_temp_dataset(self):
         self._tempdir = tempfile.mkdtemp()
         self.ds = nc.Dataset(os.path.join(self._tempdir, 'tmp.nc'), 'w')
@@ -100,8 +100,8 @@ class Test_VariableMimic(tests.TestCase, MixinNcFakeTest):
             self.assertEqual(var.ndim, 0)
             self.assertEqual(var.shape, ())
             self.assertEqual(var.size, 1)
-            self.assertEqual(var.dtype, np.float)
-            self.assertEqual(var.datatype, np.float)
+            self.assertEqual(var.dtype, np.float64)
+            self.assertEqual(var.datatype, np.float64)
             data = var[:]
             self.assertEqual(data, 1.2)
             self.assertEqual(data.shape, ())
@@ -126,8 +126,8 @@ class Test_VariableMimic(tests.TestCase, MixinNcFakeTest):
             self.assertEqual(var.ndim, 2)
             self.assertEqual(var.shape, (2, 3))
             self.assertEqual(var.size, 6)
-            self.assertEqual(var.dtype, np.int)
-            self.assertEqual(var.datatype, np.int)
+            self.assertEqual(var.dtype, np.int64)
+            self.assertEqual(var.datatype, np.int64)
             data = var[:]
             self.assertTrue(np.all(data == [[3, 1, 2], [4, 0, 7]]))
             self.assertEqual(data.shape, var.shape)
@@ -205,7 +205,7 @@ class Test_GroupMimic(tests.TestCase, MixinNcFakeTest):
             self.assertEqual(sorted(group.dimensions),
                              ['x', 'y'])
             self.assertEqual(sorted(var.name
-                                    for var in group.variables.values()),
+                                    for var in list(group.variables.values())),
                              ['aa', 'vx'])
             self.assertEqual(group.variables['aa'].dimensions, ('y', 'x'))
             self.assertEqual(len(group.groups), 1)

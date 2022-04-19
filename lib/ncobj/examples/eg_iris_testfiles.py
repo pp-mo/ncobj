@@ -36,19 +36,19 @@ def check_file_cdl(file_path):
     g_cdl_std = ncdl.comparable_cdl(g_cdl)
     f_cdl_std = ncdl.comparable_cdl(f_cdl)
     if g_cdl_std == f_cdl_std:
-        print 'OK    (ncdump and ncobj output EQUAL)'
+        print('OK    (ncdump and ncobj output EQUAL)')
     else:
-        print 'FAIL: ncdump and ncobj output differ..'
-    print
+        print('FAIL: ncdump and ncobj output differ..')
+    print()
 
 
 testfiles_dirpath = iris_testdata_path(('NetCDF', 'testing'))
 testfiles_pathspec = os.path.join(testfiles_dirpath, '*.nc')
 file_paths = glob.glob(testfiles_pathspec)
 for file_path in file_paths:
-    print
-    print 'FILE {}:'.format(file_path)
+    print()
+    print('FILE {}:'.format(file_path))
     check_file_cdl(file_path)
 
-print
-print '--DONE--'
+print()
+print('--DONE--')

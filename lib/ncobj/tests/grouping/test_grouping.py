@@ -1,7 +1,7 @@
 import unittest as tests
 
 
-import mock
+from unittest import mock
 import ncobj as nco
 from ncobj.shorts import og, od, ov, oa
 
@@ -111,8 +111,8 @@ class Test_find_named_definition(_BaseTest_Grouping):
         g = og('')
         with self.assertRaises(ValueError) as err_context:
             fnd(g, 'name', type(None))
-        msg = err_context.exception.message
-        self.check_all_in_str(msg, ['<type \'NoneType\'>',
+        msg = str(err_context.exception)
+        self.check_all_in_str(msg, ['<class \'NoneType\'>',
                                     'not recognised',
                                     'or not supported'])
 
@@ -120,7 +120,7 @@ class Test_find_named_definition(_BaseTest_Grouping):
         g = og('')
         with self.assertRaises(ValueError) as err_context:
             fnd(g, 'name', nco.Group)
-        msg = err_context.exception.message
+        msg = str(err_context.exception)
         self.check_all_in_str(msg, ['ncobj.Group',
                                     'not recognised',
                                     'or not supported'])
@@ -153,14 +153,14 @@ class Test_find_named_definition(_BaseTest_Grouping):
         g = og('', gg=[og('sg', dd=[od('dim_q', 3)])])
         test_grp = g.groups['sg']
         test_dim = test_grp.dimensions['dim_q']
-        self.assertEquals(fnd(test_grp, 'dim_q', nco.Dimension),
+        self.assertEqual(fnd(test_grp, 'dim_q', nco.Dimension),
                           test_dim)
 
     def test_subgroup_in_parent(self):
         g = og('', gg=[og('sg')], dd=[od('dim_q', 3)])
         test_grp = g.groups['sg']
         test_dim = g.dimensions['dim_q']
-        self.assertEquals(fnd(test_grp, 'dim_q', nco.Dimension),
+        self.assertEqual(fnd(test_grp, 'dim_q', nco.Dimension),
                           test_dim)
 
 
@@ -182,7 +182,7 @@ class Test_check_group_name_clashes(_BaseTest_Grouping):
         g = og('root', vv=[ov('tst1')], gg=[og('tst1')])
         with self.assertRaises(NameConflictError) as err_context:
             check_names(g)
-        msg = err_context.exception.message
+        msg = str(err_context.exception)
         self.check_all_in_str(msg, ['group "root"', 'both',
                                     'variable', 'group', 'tst1'])
 
@@ -210,7 +210,7 @@ class Test_check_consistent_dims_usage(_BaseTest_Grouping):
         g = og('', dd=[od('x')], vv=[ov('v1', dd=[od('x')])])
         with self.assertRaises(DimensionConflictError) as err_context:
             check_dims(g)
-        msg = err_context.exception.message
+        msg = str(err_context.exception)
         self.check_all_in_str(msg, ['No length', 'dimension "/x"'])
 
     def test_fail_incomplete(self):
@@ -230,7 +230,7 @@ class Test_check_consistent_dims_usage(_BaseTest_Grouping):
                    ov('v2', dd=[od('x', 3)])])
         with self.assertRaises(DimensionConflictError) as err_context:
             check_dims(g)
-        msg = err_context.exception.message
+        msg = str(err_context.exception)
         self.check_all_in_str(msg, ['/v1', '"x" = 2', '/v2', '"x" = 3'])
 
     def test_okay_match_unlimited(self):
@@ -251,7 +251,7 @@ class Test_check_consistent_dims_usage(_BaseTest_Grouping):
                gg=[og('subgroup', vv=[ov('v2', dd=[od('x', 3)])])])
         with self.assertRaises(DimensionConflictError) as err_context:
             check_dims(g)
-        msg = err_context.exception.message
+        msg = str(err_context.exception)
         self.check_all_in_str(msg, ['/v1', '"x" = 2',
                                     '/subgroup/v2', '"x" = 3'])
 
@@ -308,7 +308,7 @@ class Test_check_consistent_dims_usage(_BaseTest_Grouping):
         g = og('', dd=[od('x'), od('y')], vv=[v1, v2])
         with self.assertRaises(DimensionConflictError) as err_context:
             check_dims(g)
-        msg = err_context.exception.message
+        msg = str(err_context.exception)
         self.check_all_in_str(msg, ['/v1', '/v2', '"x" = 17', '"x" = 2'])
 
     def test_fail_bad_data_shapes(self):
@@ -317,7 +317,7 @@ class Test_check_consistent_dims_usage(_BaseTest_Grouping):
                vv=[ov('v1', dd=[od('x'), od('y')], data=d1)])
         with self.assertRaises(DimensionConflictError) as err_context:
             check_dims(g)
-        msg = err_context.exception.message
+        msg = str(err_context.exception)
         self.check_all_in_str(msg, ['/v1', '3 dimensions', '2 dimensions'])
 
 
@@ -423,7 +423,7 @@ class Test_has_no_missing_dims(_BaseTest_Grouping):
         g = og('', vv=[ov('v', dd=[od('x')])])
         with self.assertRaises(IncompleteStructureError) as err_context:
             has_no_missing_dims(g, fail_if_not=True)
-        msg = err_context.exception.message
+        msg = str(err_context.exception)
         self.check_all_in_str(msg, [
             'Variable "/v"', 'dimension "x"', 'no definition exists'])
 
@@ -443,7 +443,7 @@ class Test_has_no_missing_dims(_BaseTest_Grouping):
                           ov('sv2', dd=[od('y'), od('z')])])])
         with self.assertRaises(IncompleteStructureError) as err_context:
             has_no_missing_dims(g, fail_if_not=True)
-        msg = err_context.exception.message
+        msg = str(err_context.exception)
         self.check_all_in_str(msg, [
             'Variable "/subgroup/sv2"', 'dimension "z"',
             'no definition exists'])

@@ -86,5 +86,5 @@ if __name__ == '__main__':
     if outfile_path is None:
         outfile_path = infile_path + '.cf'
     if args.verbose:
-        print 'COSP adjusting : {} --> {}'.format(infile_path, outfile_path)
+        print('COSP adjusting : {} --> {}'.format(infile_path, outfile_path))
     copy_and_fix_file(infile_path, outfile_path)

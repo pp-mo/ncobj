@@ -28,4 +28,4 @@ if __name__ == "__main__":
                         metavar='INPUT',
                         help='Path to netCDF file')
     args = parser.parse_args()
-    print ncfile_cdl(args.input)
+    print(ncfile_cdl(args.input))
