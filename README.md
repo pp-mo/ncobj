@@ -1,11 +1,20 @@
 ncobj
 =====
 
+## NOTE: now superceded by [ncdata](https://github.com/pp-mo/ncdata#readme)
+Ncdata :
+  * is likewise focussed on a neutral representation of netcdf data
+  * has less rich data manipulation
+  * includes explicit support for translation to and from [iris](https://scitools-iris.readthedocs.io/en/stable/) and [xarray](https://docs.xarray.dev/en/stable/)
+
+----
+
 A Python object representation of NetCDF4 data, allowing more flexible
 programmatic handling of NetCDF files.  
 Enables quick+easy copying of data from one netCDF4 file to another, with
 arbitrary changes.  
 Intended scope similar to NCO commands.
+
 
 For example::
 
