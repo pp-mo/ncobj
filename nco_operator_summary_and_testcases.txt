@@ -1,0 +1,50 @@
+NCO commands
+
+ncap "arithmetic processor"
+    immensely complex overloaded syntax for attribute+data formulae
+    pointwise value calculations from one input to one output file
+    Examples:
+        Define new attribute 'new' for existing variable 'one' as 2* existing 'double_att' of variable 'att_var':
+            ncap2 -s 'one@new=2*att_var@double_att' in.nc out.nc
+        Average variables of mixed types (result is of type double):
+            ncap2 -s 'average=(var_float+var_double+var_int)/3' in.nc out.nc 
+        "grow" dimensions -- increase sizes without altering existing data:
+            defdim("new_lat",$lat.size+1); // Define new dimension sizes
+            defdim("new_lon",$lon.size+1);
+            new_ORO[$new_lat,$new_lon]=0.0f; // Initialize to zero
+            new_ORO(0:$lat.size-1,0:$lon.size-1)=ORO; // Fill valid data
+        Create binary flag from a continuous array:
+            ncap2 -s 'ORO_flg=(ORO > 1.0)' in.nc out.nc
+        Change all values of ORO which equal 2.0 to the new value 3.0:
+            ncap2 -s 'ORO_msk=(ORO==2.0);ORO=ORO_msk*3.0+!ORO_msk*ORO' in.nc out.nc
+        Mask a subsequent arithmetic operation:
+            ncap2 -s 'where(ORO==2.0) ORO=3.0;' in.nc foo.nc
+
+ncatted  "attribute editor"
+    attributes variables(globs), global or all-group
+    mode = append/delete/create/modify/overwrite   ((only append is non-obvious))
+
+ncbo "binary operator"  +-*/ between two input files
+
+nces "ensemble statistics"
+    averaging with ensemble groupins given equal weights
+    file-set ensembles or group-based ensembles
+
+ncecat "ensemble concatenator"
+    multiple input files into one output
+    concat by "record" (multiple files of ~equal structure)
+    --OR-- put each input into a separate Group structure (independent)
+
+ncflint "file interpolator"
+    weighted pointwise combinatinons of input files
+
+ncks "kitchen sink"    
+    extract/print/dump hyperslabs of all/selected/all-but-excluded variables
+    also some control over attribute copying
+
+ncpdq
+ncra
+ncrcat
+ncrename
+ncwa
+

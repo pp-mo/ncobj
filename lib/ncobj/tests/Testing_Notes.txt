@@ -1,0 +1,56 @@
+NcObj
+??  __init__
+*   container
+*   name
+*   rename
+    [[detached_copy]]
+*   remove
+*   __ne__
+
+Dimension
+*   __init__
+*   isunlimited
+*   detached_copy
+*   __str__
+*   __repr__
+*   __eq__
+
+Attribute
+*   __init__
+*   detached_copy
+*   __str__
+*   __repr__
+
+Variable
+*   __init__
+*   detached_copy
+*   __str__
+*   __repr__
+
+NcobjContainer
+??  __init__
+*   group
+*   detached_contents_copy
+*   names
+*   __getitem__
+*   get
+*   __setitem__
+*   pop
+*   __delitem__
+*   add
+*   remove
+*   __iter__
+*   __len__
+*   rename_element
+*   __str__
+
+Group
+    __init__
+??  treewalk_content
+*   all_variables
+*   _find_top_group
+*   _find_existing_definition
+*   _find_or_create_definition
+*   resolve_all_references
+*   __str__
+

@@ -1,0 +1,67 @@
+MOTIVATION + USECASE IDEAS
+==========================
+* see - http://marqh.github.io/ncContainers/build/html/index.html
+
+
+MORE To-dos:
+============
+
+NcObj rename to NcElement ?
+    NetCDF datamodel description call these 'components'
+    --but the word is not repeated ??
+    https://www.unidata.ucar.edu/software/netcdf/docs/data_model.html
+    (( yes, it is in the "NetCDF User's Guide"))
+
+Variables data access:
+    Variable indexing reflects to the NetCDF4 underlying, allows getting
+        data from variable (see 'usecase_code_ideas.txt')
+    - also support data = ndarray/maskedarray
+    - also need writing to it?
+    - remove dim from var.dimensions when indexing removes a data dimension ?
+
+Documentation:
+    General tutorial + examples would be good.
+    Various functions in ncobj.grouping need intro-type explanations.
+    Consistency for dimensions and lengths needs more explaining:
+        Variables referencing an unlimited dimension may have different actual
+            lengths, therefore need separate dimension definitions (somehow)
+            - this will be common when concatenating (otherwise) compatible inputs
+    Explain current usage of variable data, using nc-variables or ndarrays
+
+Usecase examples:
+    demo to point out automatic re-creation of dimensions etc when copying
+    demo to point out *problems* of automatic dimension creation/matching ??
+
+
+CHANGES
+=======
+* Variable.dimensions can't be accessed by name, only by index
+    * that's sort-of ok, as it can occur more than once ?
+    * in principle, at present, could even be two different dims of same name
+    (if not finalised)
+        * (see "repeated dim" below)
+    * provide a method, or consider implementing a specialist container type
+
+* ==!!!== Variable.dimensions.append does not enforce a detached_copy()
+    * consider implementing a specialist container type instead of the list ?
+    * (NEWER) possibly doesn't matter, if we only ever use it as data ??
+
+* nc_dataset.read should choke on user datatypes.
+* nc_dataset.read should use setitem_reference throughout (not copying)
+
+* add tests for dimensions special cases:
+    * variable's list of dims can have a repeated dim
+    * dim-names scope holes (inner overrides outer)
+
+possible alternative create-defs-locally:
+    def localise(group):
+        for subgroup in group.groups:
+            localise(subgroup)
+        complete(group)
+    * or maybe just document as an idea ?
+
+* either support datatypes, or remove Variable.dtype
+
+* allow nc_dataset.read to open a netCDF4 dataset + close when done.
+    * N.B. may link into whole 'change the existing' area
+

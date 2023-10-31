@@ -1,0 +1,21 @@
+Latest wants, as-at 2014-09-10
+
+Track open-for-read netCDF files for simpler input-file usage
+    open direct from nc_dataset 'read' operation
+    support use as context-manager
+
+Support for user types, along the lines of exiting Dimensions
+    compound (aka structures)
+    vlen (aka ragged)
+
+Probably need to introduce some COARDS/CF concepts
+    but maybe in separate 'utils' space ?
+
+Use Biggus
+    support streamed operations
+
+Consider any relevance of wider data-access models
+    OpenDAP
+    (unidata) Common Data Model  (not sure how wide acceptance/relevance?)
+
+Allow for efficient modifications in-existing-file.

@@ -1,0 +1,198 @@
+
+ds.groups
+ds.variables
+    .keys
+    [varname]
+        .ncattrs
+            [MAGIC_FV_NAME]   # '_FillValue' must be avoided
+        .getncattr(attrname)
+        .dimensions
+        .dtype
+        .setncattr(attrname, attr_val)
+ds.dimensions
+    .keys
+    [dimname]
+        .isunlimited
+ds.ncattrs
+ds.createDimension(dimname, size=None)
+ds,createVariable(varname, dtype, dimensions, fill_value=None)
+    N.B. lots of extra create kwargs : needs some support ...
+
+
+NOTE:
+    attrs are not objects in this description --neither are dims, actually ...
+
+
+Groups -- missing:
+    ds.groups
+        .keys
+        [grpname]
+            createGroup(grpname)
+    ds.createGroup()
+
+Other missing bits:
+    ds/grp.renameDimension(oldname, newname)
+    ds/grp.renameAttribute(oldname, newname)
+    ds/grp.renameVariable(oldname, newname)
+    ds/grp.renameGroup(oldname, newname)
+
+
+Extra instance methods:
+    Dimension
+        .group
+
+
+In our case, we would not need any renames
+We might use helper functions that can include/exclude certain things, e.g.
+    remove_any('grid_*', ds1.groups['main'])
+    retain_only(['this_var', 'that_var'], ds1.groups['any'].vars, recurse_groups=True)
+        # PROBLEM here : how do we specify that we are dealing with vars or attrs ??
+
+something like 
+    "recurse through given groups, keeping any_of / any_but these attribute/var names"
+    alternatively...
+        for group in walk_groups(x):
+            group.vars = 
+    
+    "recurse through groups, removing all dimensions but those named, and optionally that refer to the included variables.
+
+For variables, we could conceivably have a path-like-names scheme, 
+    e.g. 'var1', ('groupA', 'var1'), ('groupB', 'subgrp_X', 'var1')
+
+Access this via an additional "grouppath_name" property.
+We could do this in place ??
+
+If you implement this as a "flat" model, you can then easily ask about "all vars", "all dims" etc.
+It should be possible to delete things, e.g.
+    for var in ds.vars_recursed():
+        if var.name is 'obsolete':
+            var.group.variables.remove[var]
+            # OR: ds.remove(var)
+    
+    for var in ds.vars_recursed():
+        if unwanted_name in var.attributes:
+            var.attributes.remove(unwanted_name)
+            
+    # OR: 
+    for var in ds.vars_down_groups():
+        ds.remove(var.attributes.get(unwanted_name))
+
+What about recursive selection of only the "required things ?"
+allvars = ds.variables_recursed()
+
+# group-path names of all attributes...
+    all_attrs = sum([list(var.attributes.iteritems())
+                     for var in ds.vars_downallgroups()], [])
+
+    all_vars = sum([list(groups.variables.iteritems())
+                    for group in ds.groups_downallgroups()], [])
+
+dsw_out = ncwrap()
+
+dsw_out = dsw_in.copy()
+dsw_out.variables += [var for var in dsw_in.variables if var.name != 'unwanted']
+prune_dims(dsw_out, recurse=True)
+dsw_out.write('new_name.nc')
+
+
+
+
+all_varattrs = sum(list(var.attributes.)
+for dim in ds.dimensions_recursed():
+    if 
+
+
+=========================
+Containers usage. What would we like to support ? ...
+Full list of public props/methods of dict/list/set
+    >>> pd({})
+    clear
+    copy
+    fromkeys
+    get
+    has_key
+    items
+    iteritems
+    iterkeys
+    itervalues
+    keys
+    pop
+    popitem
+    setdefault
+    update
+    values
+    viewitems
+    viewkeys
+    viewvalues
+    >>> pd([])
+    append
+    count
+    extend
+    index
+    insert
+    pop
+    remove
+    reverse
+    sort
+    >>> pd(set())
+    add
+    clear
+    copy
+    difference
+    difference_update
+    discard
+    intersection
+    intersection_update
+    isdisjoint
+    issubset
+    issuperset
+    pop
+    remove
+    symmetric_difference
+    symmetric_difference_update
+    union
+    update
+    >>> 
+
+Ones we might consider for our NcobjContainer type
+(ignoring, for now, the usage of number indexing as maybe used for dims)
+    clear
+    copy
+    get
+    items / values / keys / iterXxx
+    pop
+    append
+    count
+    extend
+    pop
+    remove
+    add
+    discard
+    pop
+    remove
+
+Ones I like
+    __setitem__
+    __getitem__
+    add
+    extend
+    remove
+    clear
+    count
+    copy
+    iter
+    names  (==keys, basically)
+
+For contained objects, want to implement
+    item.group_path_in(group)
+    item.rename  (affects container)
+    item.remove  (affects container)
+    item.as_detached()
+
+Group methods
+    write
+    (class)from_file
+    walk_all(class)
+    all_variables()
+
+

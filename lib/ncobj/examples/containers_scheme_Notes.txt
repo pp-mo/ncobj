@@ -1,0 +1,289 @@
+problem with dims in containers
+- logically, dims can't always be external to containers (I think)
+- dims are not 'just a number' : day_of_week not same as deadly_sin
+- if dims are 'outside' containers, make no general sense for coords to be 'inside'
+    - i.e. if time is outside, i.e. same for all containers in file,
+    then how come actual values time(time) are inside + potentially different?
+
+Propose:
+    explictly manage both global and local dimensions, and coordinates
+    represents clear structure in the nc4 "grouped" form
+        "file" {
+        dimensions:
+            depth = 22 ;
+        variables:
+            float depth(depth) ;
+        group obs1 {
+            dimensions:
+                time=15
+            variables:
+                float time(time) ;
+                time:units = 'days since 1984-04-28' ;
+                float data(time, depth) ;
+                int errflags(time, depth) ;
+            :container_type = 'depth_obs' ;
+            :measured = 'data' ;
+            :quality = 'errflags' ;
+        }
+        group obs2 {
+            dimensions:
+                time=8
+            variables:
+                float time(time) ;
+                time:units = 'days since 1984-05-02' ;
+                data_obs(time, depth);
+                int errors(time, depth) ;
+            :container_type = 'depth_obs' ;
+            :measured = 'data_obs' ;
+            :quality = 'errors' ;
+        }
+
+    in flat form, requires separate identifiers for dims ...
+        "file" {
+        dimensions:
+            depth = 22 ;
+            obs1___time = 15 ;
+            obs2___time = 8 ;
+        variables:
+            int obs1;
+            obs1:container_type = 'depth_obs' ;
+            obs1:measured = 'obs1___data' ;
+            obs1:quality = 'obs1___errflags' ;
+            obs1:member_dims = 'obs1___time' ;
+            obs1:member_variables = 'obs1___data obs1___errflags obs1___time' ;
+            float obs1___data(obs1___time, depth) ;
+            float obs1___errflags(obs1___time, depth) ;
+            float obs1___time(obs1___time) ;
+            obs1___time:units = 'days since 1984-04-28' ;
+            int obs2;
+            obs2:container_type = 'depth_obs' ;
+            obs2:measured = 'obs2___data_x' ;
+            obs2:quality = 'obs2___errors' ;
+            obs2:member_dims = 'obs2___time' ;
+            obs2:member_variables = 'obs2___data_x obs2___errors obs2___time' ;
+            float obs2___data_x(obs2___time, depth) ;
+            float obs2___errors(obs2___time, depth) ;
+            float obs2___time(obs2___time) ;
+            obs2___time:units = days since 1984-05-02 ;
+        }
+
+Another question : what about sub-groups ?
+og('root', gg=[og('sg', vv=[ov('sv', dd=<DIMS1>)],
+                  gg=[og('ssg', dd=[...], vv=[ov('ssv', dd=<DIMS2>)])])]
+--->
+    sg()
+    sg:container_type = 'simple' ;
+    sg:member_variables = 'sg___sv' ;
+    sg:member_groups = 'sg___ssg' ;
+    sg___sv(<DIMS1>)
+    sg___ssg()
+    sg___ssg:container_type = 'simple' ;
+    sg___ssg:member_variables = 'sg___ssg___ssv' ;
+    sg___ssg___ssv(<DIMS2>)
+    
+Logically, this should simply flatten subgroups first to produce re-named
+contents, the original structure of which is recorded in top-level variables.
+It make perfect sense to _not_ allow this, if that is practical, but it is not
+a hard problem.
+
+If we have subgroups with known roles, this may actually become clearer ...
+    file {
+    dimensions:
+        time = unlimited ;
+        height = 5
+    group obs1 {
+        :container_type = 'simple' ;
+        float temp(time, height);
+        wind {
+            :container_type = 'wind_vector' ;
+            :grid_east = 'u' ;
+            :grid_north = 'v' ;
+            :units = 'm s-1' ;
+            variables:
+                u(time, height) ;
+                v(time, height) ;
+        }
+    }
+    group obs2 {
+        :container_type = 'simple' ;
+        float temp(time, height);
+        wind {
+            :container_type = 'wind_vector' ;
+            :grid_east = 'u' ;
+            :grid_north = 'v' ;
+            :units = 'm s-1' ;
+            variables:
+                u(time, height) ;
+                v(time, height) ;
+        }
+    }
+    
+    
+Translates:
+    variables:
+        obs1()
+        obs1:container_type = 'simple'
+        obs1:member_variables = 'obs1___temp obs1___wind'
+        obs1___wind()
+        obs1___wind:container_type = 'wind_vector'
+        obs1___wind:grid_east = 'obs1___wind___u'
+        obs1___wind:grid_north = 'obs1___wind___v'
+        obs1___wind:member_variables = 'obs1___wind___u obs1___wind___v'
+        obs1___temp(time, height)
+        obs1___wind___u(time, height)
+        obs1___wind___v(time, height)
+
+NOTE: in order to record correctly, the parent container references the
+sub-container as a member variable.  The sub-group variables are then
+referenced by the sub-container variable (not the upper one).
+
+It doesn't *have* to be like that, you could instead retain the child container
+var but still wrap *all* the containers... In other words, we represent ...
+    file {
+    dimensions:
+        time = unlimited
+        height = 5
+    group obs1 {
+        :container_type = 'simple'
+        float temp(time, height)
+        wind()
+        wind:container_type = 'wind_vector'
+        wind:member_variables = 'wind___u wind___v'
+        wind:grid_east = 'u' ;
+        wind:grid_north = 'v' ;
+        wind:units = 'm s-1' ;
+        wind___u(time, height) ;
+        wind___v(time, height) ;
+        }
+    }
+--->
+    obs1()
+    obs1:container_type = 'simple'
+    obs1:member_variables = 'obs1___temp obs1___wind obs1___wind___u obs1___wind___v'
+    obs1___temp(time, height)
+    obs1___wind()
+    obs1___wind:container_type = 'wind_vector'
+    obs1___wind:member_variables = 'obs1___wind___u obs1___wind___v'
+    obs1___wind:grid_east = 'obs1___wind___u' ;
+    obs1___wind:grid_north = 'obs1___wind___v' ;
+    obs1___wind:units = 'm s-1' ;
+    obs1___wind___u(time, height) ;
+    obs1___wind___v(time, height) ;
+    
+NOTE: for this, you need to adjust the 'member_variables' attribute of 'wind'
+when it is prefixed as 'obs1___wind'
+This is more logical, but more verbose.
+
+THE REAL PROBLEM is knowing which attributes of a container variable reference
+members, and therefore need adjusting.
+ONE SOLUTION is to assume the prefixing (not change the member names when wrapping)
+ANOTHER is to have a special attribute that describes which attributes describe
+members ???
+
+FOR EXAMPLE
+  in above, 'grid_east' is a role, so identifies a variable
+  (conceivably, this could also be done for dims or even subgroups ??)
+  the processor needs to know that 'grid_east' contains component name(s)
+  we could denote this with a specially attribute (analagous to ":members")
+    wind (
+        :container_type = 'wind vector'
+        :roles = 'wind_east wind_north'
+        :wind_east = 'u_obs'
+        :wind_north = 'v_obs'
+        :units = 'm s-1'
+        float u_obs(...)
+        float v_obs(...)
+    }
+--->
+    wind()
+    wind:container_type = 'wind vector'
+    wind:roles = 'wind_east wind_north'
+    wind:wind_east = 'u_obs'
+    wind:wind_north = 'v_obs'
+    wind:member_variables = 'wind___u_obs wind___v_obs'
+    float wind___u_obs(...)
+    float wind___v_obs(...)
+
+QUESTION
+    does this not occur in the absence of subgroups ??
+    ?because? you only construct member_names once when flattening a group, so
+    it never need reworking as part of a parent group flatten.
+
+Could it possibly then make more sense to NOT fix names in members attributes?
+- it means that the direct reference to a name you can recognise must be
+indirect, but that will be ok.
+I.E. rule is 'prepend name of container variable to member variable names'
+thus
+    wind:members = 'u v'  --> wind_u, wind_v
+    obs1___wind:members = 'u v'  --> obs1___wind_u, obs1___wind_v
+SO it seems "neater" to have that as an interpretation of the members
+--and especially role attributes-- , than as a requirement to rewrite them
+
+So we would get...
+    wind()
+    wind:container_type = 'wind vector'
+    wind:wind_east = 'u_obs'
+    wind:wind_north = 'v_obs'
+    wind:member_variables = 'u_obs v_obs'
+    float wind___u_obs(...)
+    float wind___v_obs(...)
+and if further 'wrapped' ...
+    obs1()
+    obs1:container_type = 'simple'
+    obs1:member_variables = 'temp wind'
+    obs1___temp(...)
+    obs1___wind()
+    obs1___wind:container_type = 'wind vector'
+    obs1___wind:wind_east = 'u_obs'
+    obs1___wind:wind_north = 'v_obs'
+    obs1___wind:member_variables = 'u_obs v_obs'
+    float obs1___wind___u_obs(...)
+    float obs1___wind___v_obs(...)
+
+Thus obs1 contains obs1___wind contains obs1__wind___u_obs
+But the prefixing is omitted from the members attributes
+This avoids the need to identify role attributes + treat them specially
+
+ACTUALLY this can be seen in the 'vector' example
+    In example, don't rewrite role attrs 'i_component' + 'j_component'
+    but we are not renaming anything (which can't be done automatically)
+
+========================
+=== THE PROBLEM with this approach is that names have become significant, 
+=== no longer arbitrary, so e.g. you can't validly connect things by simply
+=== creating a container for them.
+E.G.
+    my_x(time)
+    his_y(time)
+    xy()
+    xy:container_type = 'wind_vector'
+    xy:eastward = 'my_x'
+    xy:northward = 'his_y'
+    xy:members = 'my_x is_y'
+
+This now implies that my_x and his_y *MUST* be renamed.
+The alternative is a :roles variable.  That then _allows_ automatic renaming,
+if needed:  xy:roles = 'eastward northward'
+In fact, you could combine the two:
+    xy:container_members = 'eastward=my_x northward=his_y'
+
+
+
+=========
+NEW PROBLEMS
+=========
+Same difficulties with renaming vars not limited to containers
+  -- e.g. CF 'coords' and 'grid_variable' (??) attributes
+With ncobj, can fix this with existing technology, using variable references
+to make things independent of renames.
+HOWEVER it means you must not make further detached copies of the relevant 
+variables or attributes : they must now be moved + inserted as references
+
+(( SEE NEW CODE in semantic_containers.py ))
+
+
+======================
+=== ASIDE: HUMAN-CENTRED NOTE
+should the container_type attribute contain a shorter human-friendly ID, or is
+the existing URL readable enough ?
+
